@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
+    "build:hostinger": "next build --webpack",
     "start": "next start --port 3001",
     "models": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON assets-src/build.mjs"
   },
