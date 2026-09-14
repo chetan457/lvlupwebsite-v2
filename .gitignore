@@ -1,0 +1,12 @@
+node_modules
+.next
+next-env.d.ts
+*.tsbuildinfo
+assets-src/out
+assets-src/src
+
+.DS_Store
+.env*
+!.env.example
+*.pem
+.vercel

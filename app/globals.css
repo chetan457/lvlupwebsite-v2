@@ -1,0 +1,253 @@
+@import 'tailwindcss';
+
+/*
+  LvlUp v2 — the Midnight palette from v1, carried over unchanged, so the two
+  sites read as the same lounge. Graphite ground, PlayStation blue spent only on
+  what is lit, live or interactive. The WebGL scene reads these same tokens off
+  the document, so the voxels and the CSS never disagree.
+*/
+@theme {
+  --color-room: #050608;
+  --color-room-deep: #030405;
+  --color-surface: #0c0f14;
+  --color-surface-hi: #151a21;
+  --color-lamp: #0070d1;
+  --color-lamp-hi: #0a84e8;
+  --color-lamp-ink: #ffffff;
+  --color-accent: #00a8ff;
+  --color-accent-mute: #9ec7e8;
+  --color-paper: #f5f7fa;
+  --color-dim: #a7b0bb;
+  --color-dimmer: #7d8590;
+  --color-edge: #1a2029;
+  --color-edge-hi: #232d3a;
+  --color-live: #34d399;
+  --color-alarm: #ef4444;
+
+  --font-sans: var(--font-geist-sans), 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: var(--font-chakra), var(--font-geist-sans), 'Arial Narrow', sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-cubic: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root {
+  --ch-accent: 0 168 255;
+  --ch-lamp: 0 112 209;
+  --ch-room: 5 6 8;
+  --ch-surface: 12 15 20;
+  --ch-paper: 245 247 250;
+
+  --gutter: clamp(1.15rem, 4vw, 3rem);
+
+  /* shared with v1, for the generated game cases in components/game-case.tsx */
+  --glow-accent: rgb(var(--ch-accent) / 0.3);
+  --glow-accent-faint: rgb(var(--ch-accent) / 0.14);
+  --edge-lit: rgb(var(--ch-paper) / 0.16);
+  --edge-lit-fade: rgb(var(--ch-paper) / 0.02);
+}
+
+@layer base {
+  html {
+    background-color: var(--color-room);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* the menu locks the page; Lenis is stopped separately */
+  html.scroll-locked {
+    overflow: hidden;
+  }
+
+  body {
+    background-color: var(--color-room);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    /* clip, never hidden: hidden turns body into a scroll container and breaks pinning */
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--color-lamp);
+    color: var(--color-lamp-ink);
+  }
+
+  /*
+    CRT scanlines, fixed so scrolling never repaints them, desktop only. At phone
+    density they are invisible and a full-screen composited layer is not free.
+  */
+  @media (min-width: 64rem) and (pointer: fine) {
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgb(var(--ch-paper) / 0.022) 0 1px, transparent 1px 3px);
+    }
+  }
+}
+
+@layer components {
+  /* full width on purpose: the logo and HUD sit on the viewport gutter, so the copy
+     has to as well, or on a wide screen their left edges disagree */
+  .shell {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* not `.overline`: that name is a Tailwind text-decoration utility */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    color: var(--color-dim);
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(3.2rem, 9.2vw, 9rem);
+    line-height: 0.86;
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
+  }
+
+  .lead {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.45rem, 2.5vw, 2.25rem);
+    line-height: 1.14;
+  }
+
+  /* a cut corner, the one shape every game HUD shares */
+  .notch {
+    --notch: 10px;
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--notch)) 0,
+      100% var(--notch),
+      100% 100%,
+      var(--notch) 100%,
+      0 calc(100% - var(--notch))
+    );
+  }
+
+  .hud-card {
+    background: linear-gradient(160deg, rgb(21 26 33 / 0.9) 0%, rgb(8 10 14 / 0.94) 100%);
+    border: 1px solid var(--color-edge-hi);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: inset 0 1px 0 rgb(var(--ch-paper) / 0.06);
+  }
+
+  /* corner brackets; they light up when the card is hovered or focused into */
+  .brackets {
+    --len: 16px;
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    opacity: 0.45;
+    transition: opacity 0.35s var(--ease-out-soft);
+    background:
+      linear-gradient(var(--color-accent), var(--color-accent)) top left / var(--len) 1px no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) top left / 1px var(--len) no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) top right / var(--len) 1px no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) top right / 1px var(--len) no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) bottom left / var(--len) 1px no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) bottom left / 1px var(--len) no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) bottom right / var(--len) 1px no-repeat,
+      linear-gradient(var(--color-accent), var(--color-accent)) bottom right / 1px var(--len) no-repeat;
+  }
+
+  .hud-card:hover .brackets,
+  .hud-card:focus-within .brackets {
+    opacity: 1;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* --- the stage behind everything ------------------------------------------ */
+
+  /* painted until the scene lights, and for good when it never will */
+  .stage-glow {
+    background:
+      radial-gradient(48% 44% at 74% 40%, rgb(var(--ch-accent) / 0.2) 0%, transparent 70%),
+      radial-gradient(40% 40% at 18% 82%, rgb(var(--ch-lamp) / 0.14) 0%, transparent 70%);
+  }
+
+  .stage-grid {
+    background-image:
+      linear-gradient(rgb(var(--ch-accent) / 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--ch-accent) / 0.2) 1px, transparent 1px);
+    background-size: 72px 72px;
+    transform: perspective(520px) rotateX(64deg);
+    transform-origin: 50% 100%;
+    -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 85%);
+    mask-image: linear-gradient(to top, #000 10%, transparent 85%);
+  }
+
+  /* phones: the copy scrolls straight over the scene, so darken all of it */
+  .stage-scrim {
+    background: linear-gradient(to bottom, rgb(var(--ch-room) / 0.1) 0%, rgb(var(--ch-room) / 0.5) 42%, rgb(var(--ch-room) / 0.78) 72%);
+  }
+
+  /* desktop: only the left, where the copy lives; the formations sit right */
+  @media (min-width: 64rem) {
+    .stage-scrim {
+      background:
+        linear-gradient(90deg, rgb(var(--ch-room) / 0.85) 0%, rgb(var(--ch-room) / 0.5) 34%, transparent 58%),
+        linear-gradient(to top, rgb(var(--ch-room) / 0.55) 0%, transparent 28%);
+    }
+  }
+
+  [data-stage-layer] {
+    transition: opacity 0.7s var(--ease-out-soft);
+  }
+
+  /* phones: the scene steps back behind body copy (set by the scroll director) */
+  @media (max-width: 63.99rem) {
+    html[data-stage='text'] [data-stage-layer] {
+      opacity: 0.3;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
