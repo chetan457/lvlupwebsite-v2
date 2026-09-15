@@ -24,9 +24,9 @@ export const site = {
   /** Set to the real domain before launch; used for canonicals and OG tags. */
   url: 'https://lvlup-lounge.example',
 
-  phone: '+919886741290',
-  phoneDisplay: '+91 98867 41290',
-  whatsapp: '919886741290',
+  phone: '+918401665488',
+  phoneDisplay: '+91 84016 65488',
+  whatsapp: '918401665488',
   email: 'bookings@lvlup-lounge.example',
 
   address: {

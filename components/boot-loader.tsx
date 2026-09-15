@@ -38,7 +38,9 @@ export function BootLoader() {
 
     // pages without a stage (the 404) have no scene to wait for
     const hasStage = document.querySelector('[data-experience]') !== null;
-    const minimum = reduced || seen ? 250 : 1000;
+    // phones get a shorter boot: the screen is smaller and every second counts more on a slow link
+    const small = window.innerWidth < 1024;
+    const minimum = reduced || seen ? 250 : small ? 600 : 1000;
     const started = performance.now();
 
     let fontsReady = !document.fonts;
@@ -57,7 +59,7 @@ export function BootLoader() {
       // ten seconds to count to 100 while the page sat ready underneath
       const dt = Math.min(now - previous, 250);
       previous = now;
-      const sceneSettled = !hasStage || sceneStatus.get() !== 'pending' || elapsed > 2200;
+      const sceneSettled = !hasStage || sceneStatus.get() !== 'pending' || elapsed > (small ? 1600 : 2200);
       const cap = fontsReady ? (sceneSettled ? 100 : 86) : 60;
       const want = Math.min(cap, (elapsed / minimum) * 100);
 

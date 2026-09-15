@@ -29,7 +29,8 @@ export function ScrollDirector() {
     const cleanups: (() => void)[] = [];
 
     if (!reduced) {
-      const lenis = new Lenis({ autoRaf: false, lerp: 0.1 });
+      // allowNestedScroll: a trackpad swipe over a slide row scrolls the row, not the page
+      const lenis = new Lenis({ autoRaf: false, lerp: 0.1, allowNestedScroll: true });
       const raf = (time: number) => lenis.raf(time * 1000);
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add(raf);
@@ -148,6 +149,10 @@ export function ScrollDirector() {
       const holdForBoot = (el: Element) => Boolean(intro?.contains(el)) && !bootDone.get();
 
       gsap.utils.toArray<HTMLElement>('[data-split]').forEach((el) => {
+        // The opening headline is never hidden for an intro: masked lines do not paint, and
+        // holding the page's largest text back until the boot screen lifts made it the
+        // slowest thing on the page to appear (LCP). Later titles still reveal on scroll.
+        if (intro?.contains(el)) return;
         SplitText.create(el, {
           type: 'lines',
           mask: 'lines',

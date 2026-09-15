@@ -187,6 +187,15 @@
     opacity: 1;
   }
 
+  /* phones: a frosted card per slide made scrolling stutter; an opaque ground reads the same */
+  @media (max-width: 63.99rem) {
+    .hud-card {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      background: linear-gradient(160deg, rgb(21 26 33 / 0.97) 0%, rgb(8 10 14 / 0.98) 100%);
+    }
+  }
+
   .no-scrollbar {
     scrollbar-width: none;
   }
@@ -202,6 +211,10 @@
     background:
       radial-gradient(48% 44% at 74% 40%, rgb(var(--ch-accent) / 0.2) 0%, transparent 70%),
       radial-gradient(40% 40% at 18% 82%, rgb(var(--ch-lamp) / 0.14) 0%, transparent 70%);
+  }
+
+  .stage-still-glow {
+    background: radial-gradient(50% 45% at 55% 42%, rgb(var(--ch-accent) / 0.22) 0%, rgb(var(--ch-lamp) / 0.08) 45%, transparent 72%);
   }
 
   .stage-grid {

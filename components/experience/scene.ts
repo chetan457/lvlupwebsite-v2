@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 
 import { rates } from '@/content/pricing';
 import { site } from '@/content/site';
-import { bootDone, experience, sceneStatus } from '@/lib/experience-store';
+import { bootDone, experience, sceneStatus, trailerGame } from '@/lib/experience-store';
 
 import {
   buildFormations,
@@ -422,19 +423,47 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
 
   // --- post -----------------------------------------------------------------
   // scene + depth of field → bloom → tone map to display colour → lens finish
-  let composer: EffectComposer | null = null;
+  // Phones get the same glow and lens finish as desktop. Only depth of field — the one
+  // full-resolution, multi-tap pass — stays desktop-only. A phone that cannot keep up
+  // is stepped down by the frame-rate check in the loop, not assumed weak up front.
+  //
+  // Float render targets hold the "brighter than white" values bloom keys off. Nearly every
+  // WebGL2 device has them; one that does not skips bloom and depth of field rather than
+  // rendering them wrong, and still glows through the halo sprites in models.ts.
+  const floatTargets =
+    renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
+  if (!floatTargets) console.info('[lvlup] no float render targets: bloom off, halos only');
+  // ?debug&bloom=off shows exactly what a device without bloom sees
+  const bloomAllowed = floatTargets && !(debug && new URLSearchParams(window.location.search).get('bloom') === 'off');
+
+  let composer: EffectComposer | null = new EffectComposer(
+    renderer,
+    new THREE.WebGLRenderTarget(1, 1, { type: floatTargets ? THREE.HalfFloatType : THREE.UnsignedByteType }),
+  );
   let lens: LensPass | null = null;
-  let finish: ReturnType<typeof createFinishPass> | null = null;
-  if (quality === 'high') {
-    composer = new EffectComposer(renderer);
-    composer.setPixelRatio(pixelRatio);
+  let bloom: UnrealBloomPass | null = null;
+  let finish: ReturnType<typeof createFinishPass> | null = createFinishPass();
+  composer.setPixelRatio(pixelRatio);
+  if (quality === 'high' && floatTargets) {
     lens = new LensPass(scene, camera);
-    finish = createFinishPass();
     composer.addPass(lens);
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.5, 0.88));
-    composer.addPass(new OutputPass());
-    composer.addPass(finish);
+  } else {
+    composer.addPass(new RenderPass(scene, camera));
   }
+  if (bloomAllowed) {
+    // lighter than before: the halos now carry the base glow, bloom only adds to it
+    bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.5, 0.88);
+    // The halo spread is measured in bloom-buffer pixels. Pinning those buffers at 720 rows
+    // makes it the same size on 1x, 2x and 3x screens — and cheaper on a retina one.
+    const sizeBloom = bloom.setSize.bind(bloom);
+    bloom.setSize = (width: number, height: number) => {
+      const rows = 720;
+      sizeBloom(Math.max(1, Math.round((rows * width) / Math.max(height, 1))), rows);
+    };
+    composer.addPass(bloom);
+  }
+  composer.addPass(new OutputPass());
+  composer.addPass(finish);
 
   // --- layout ---------------------------------------------------------------
   let baseFov = 35;
@@ -454,9 +483,10 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
         shifts[i].set(0, 0, 0);
         scales[i] = 1;
       } else if (narrow) {
-        // phones: formation above the copy, which scrolls over a scrim
+        // phones: formation above the copy, which scrolls over a scrim; large enough
+        // that the bays' screens still read as screens at 390px
         shifts[i].set(0, 1.9, 0);
-        scales[i] = 0.58;
+        scales[i] = 0.7;
       } else {
         // desktop: centred in the right half of the frame, away from the copy
         const drop = i === 3 ? -0.45 : 0.1;
@@ -491,6 +521,7 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
   let windowFrames = 0;
   let slowFrames = 0;
   let lensOff = false;
+  let dustThinned = false;
   let bootRamp = 0;
 
   const tick = () => {
@@ -524,6 +555,8 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     // as it leaves. The boot ramp makes the first arrival the page-load intro.
     bootRamp = bootDone.get() ? Math.min(1, bootRamp + dt / 2.4) : 0;
     kit.models.forEach((model, i) => {
+      // models load as the scroll approaches their chapter, not all five on page load
+      if (model && Math.abs(shown.progress - i) < 1.1) model.request();
       // a model that has not loaded (or failed to) leaves its chapter to the voxels
       const presence = model?.ready
         ? (1 - THREE.MathUtils.smoothstep(Math.abs(shown.progress - i), 0.04, 0.45)) * bootRamp
@@ -597,7 +630,8 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
       if (debugClock >= 1) {
         debug.textContent =
           `tier   ${quality}\nfps    ${Math.round(debugFrames / debugClock)}\npixels ${pixelRatio}x\n` +
-          `bloom  ${composer ? 'on' : 'OFF'}\nfocus  ${lens && !lensOff ? 'on' : 'off'}\ngpu    ${gpuName}`;
+          `bloom  ${bloom ? 'on' : 'OFF'}\nfocus  ${lens && !lensOff ? 'on' : 'off'}\nfloat  ${floatTargets ? 'yes' : 'no'}\n` +
+          `specks ${dustThinned ? 'thinned' : 'full'}\ngpu    ${gpuName}`;
         debugFrames = 0;
         debugClock = 0;
       }
@@ -628,14 +662,16 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
           lensOff = true;
           lens.maxBlur = 0;
           console.info('[lvlup] sustained low frame rate: depth of field off');
-        } else if (composer) {
-          composer.dispose();
-          lens?.dispose();
-          finish?.dispose();
-          composer = null;
-          lens = null;
-          finish = null;
-          console.info('[lvlup] sustained low frame rate: bloom and lens effects off');
+        } else if (!dustThinned) {
+          dustThinned = true;
+          kit.thin();
+          console.info('[lvlup] sustained low frame rate: fewer transition particles');
+        } else if (composer && bloom && slowShare > 0.75) {
+          // bloom goes last, and only for a device that is badly behind; the halos stay
+          composer.removePass(bloom);
+          bloom.dispose();
+          bloom = null;
+          console.info('[lvlup] sustained low frame rate: bloom off (halos remain)');
         }
       }
     }
@@ -650,12 +686,21 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     cancelAnimationFrame(raf);
     raf = 0;
   };
-  const onVisibility = () => (document.hidden ? stop() : start());
+  // paused while the tab is hidden, and while a trailer plays, so the video gets the whole GPU
+  const onVisibility = () => (document.hidden || trailerGame.get() ? stop() : start());
+  const unsubscribeTrailer = trailerGame.subscribe(onVisibility);
 
   window.addEventListener('pointermove', onPointerMove, { passive: true });
   window.addEventListener('resize', layout);
   document.addEventListener('visibilitychange', onVisibility);
-  start();
+  // Compile shaders off the main thread where the GPU driver allows it, so the first frame
+  // does not freeze the page; start either way if the async path is unavailable.
+  renderer
+    .compileAsync(scene, camera)
+    .catch(() => undefined)
+    .then(() => {
+      if (!disposed) onVisibility();
+    });
 
   return () => {
     stop();
@@ -663,6 +708,7 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('resize', layout);
     document.removeEventListener('visibilitychange', onVisibility);
+    unsubscribeTrailer();
 
     disposed = true;
     kit.dispose();
@@ -670,6 +716,7 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     pmrem.dispose();
     scene.clear();
     disposables.forEach((item) => item.dispose());
+    bloom?.dispose();
     composer?.dispose();
     lens?.dispose();
     finish?.dispose();

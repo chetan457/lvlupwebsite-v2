@@ -33,7 +33,7 @@ export function SlideCard({
           className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-1"
         />
         {/* backed, because this row flies over the tunnel and bare text lost to the lit cubes */}
-        <p className="mt-2 rounded-[8px] border border-edge bg-room/85 px-3 py-2.5 text-[0.88rem] leading-snug text-dim backdrop-blur-md">
+        <p className="mt-2 rounded-[8px] border border-edge bg-room/85 px-3 py-2.5 text-[0.88rem] leading-snug text-dim lg:backdrop-blur-md">
           {slide.body}
         </p>
       </article>

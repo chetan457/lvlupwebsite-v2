@@ -3,8 +3,10 @@ import { Chakra_Petch, Geist, Geist_Mono } from 'next/font/google';
 
 import { BootLoader } from '@/components/boot-loader';
 import { SiteChrome } from '@/components/site-chrome';
+import { TrailerModal } from '@/components/trailer-modal';
 import { site } from '@/content/site';
 import { jsonLd, localBusinessSchema } from '@/lib/schema';
+import { indexable } from '@/lib/seo';
 
 import 'lenis/dist/lenis.css';
 import './globals.css';
@@ -20,17 +22,38 @@ const display = Chakra_Petch({
   variable: '--font-chakra',
 });
 
+const title = `${site.name} — ${site.tagline} in ${site.address.locality}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: {
-    default: `${site.name} — ${site.tagline} in ${site.address.locality}`,
-    template: `%s — ${site.name}`,
-  },
+  title: { default: title, template: `%s — ${site.name}` },
   description: site.description,
   applicationName: site.name,
-  // v2 is a design preview sharing every word of copy with the live site;
-  // letting both be indexed would split the lounge's search presence
-  robots: { index: false, follow: false },
+  keywords: [
+    'PS5 gaming lounge',
+    `gaming cafe ${site.address.city}`,
+    `PS5 on rent ${site.address.locality}`,
+    'PlayStation 5 by the hour',
+    'gaming cafe near me',
+    'birthday party gaming lounge',
+  ],
+  category: 'entertainment',
+  alternates: { canonical: '/' },
+  // Closed unless SITE_INDEXABLE=true at build time; see lib/seo.ts for why.
+  robots: indexable
+    ? { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' } }
+    : { index: false, follow: false },
+  // images come from app/opengraph-image.tsx; Next wires both cards to it
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    url: '/',
+    siteName: site.name,
+    title,
+    description: site.description,
+  },
+  twitter: { card: 'summary_large_image', title, description: site.shortDescription },
+  formatDetection: { telephone: true, address: false, email: false },
 };
 
 export const viewport: Viewport = {
@@ -57,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <BootLoader />
         <SiteChrome />
+        <TrailerModal />
         <main id="main" className="relative z-10">
           {children}
         </main>

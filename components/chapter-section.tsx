@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 
 import { BookButton } from '@/components/book-button';
 import { GamesCorridor } from '@/components/games-corridor';
+import { RowControls } from '@/components/row-controls';
 import { SlideCard } from '@/components/slide-card';
 import type { Chapter } from '@/content/chapters';
 
@@ -115,8 +116,11 @@ function SlideRow({
     >
         <ol
           data-track
+          id={`${chapter.id}-track`}
+          // sideways gestures inside the row belong to the row, not to the smooth page scroll
+          data-lenis-prevent-horizontal
           aria-label={chapter.slidesLabel}
-          className="no-scrollbar flex snap-x snap-mandatory scroll-px-[var(--gutter)] gap-4 overflow-x-auto px-[var(--gutter)] lg:snap-none lg:gap-6 lg:overflow-visible"
+          className="no-scrollbar flex snap-x snap-proximity scroll-px-[var(--gutter)] gap-4 overflow-x-auto overscroll-x-contain px-[var(--gutter)] lg:snap-none lg:gap-6 lg:overflow-visible"
         >
           <li className="flex w-[min(62vw,16rem)] shrink-0 snap-start flex-col justify-between py-2 lg:w-[19rem] lg:py-6">
             <div>
@@ -143,6 +147,7 @@ function SlideRow({
           {/* trailing gutter: flex overflow drops the track's right padding from scrollWidth */}
           <li aria-hidden="true" className="w-px shrink-0 lg:w-[var(--gutter)]" />
         </ol>
+        <RowControls trackId={`${chapter.id}-track`} label={chapter.slidesLabel} />
       </div>
   );
 }

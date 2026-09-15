@@ -1,5 +1,6 @@
 import Image from 'next/image';
 
+import { TrailerButton } from '@/components/trailer-button';
 import { covers } from '@/content/game-covers';
 import type { Game } from '@/content/games';
 
@@ -157,6 +158,8 @@ export function GameCase({
           {game.players}
           <span className="sr-only">{game.players === '1' ? ' player' : ' players'}</span>
         </span>
+
+        {game.trailer ? <TrailerButton slug={game.slug} title={game.title} /> : null}
       </div>
     );
   }
@@ -194,6 +197,8 @@ export function GameCase({
       >
         {String(index + 1).padStart(2, '0')}
       </span>
+
+      {game.trailer ? <TrailerButton slug={game.slug} title={game.title} /> : null}
     </div>
   );
 }

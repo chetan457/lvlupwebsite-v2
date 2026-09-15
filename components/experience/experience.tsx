@@ -59,7 +59,15 @@ export function Experience() {
       sceneStatus.set('off');
       return;
     }
-    setQuality(chosen);
+    // Start three.js once the browser is idle, not during first paint: the headline and
+    // copy paint and become interactive first, and the scene fades in behind them.
+    const begin = () => setQuality(chosen);
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(begin, { timeout: 1200 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(begin, 300);
+    return () => window.clearTimeout(timer);
   }, []);
 
   return (
@@ -74,16 +82,22 @@ export function Experience() {
           still shows its pad, as a still rendered by the same Blender build.
         */}
         {status === 'off' ? (
-          <img
-            src="/stills/controller.webp"
-            alt=""
-            width={1600}
-            height={1000}
-            decoding="async"
-            className={`absolute right-[3%] top-1/2 hidden w-[min(50vw,56rem)] -translate-y-1/2 transition-opacity duration-700 lg:block ${
+          <div
+            className={`absolute left-1/2 top-[24%] w-[88vw] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-700 lg:left-auto lg:right-[3%] lg:top-1/2 lg:w-[min(50vw,56rem)] lg:translate-x-0 ${
               chapter === 0 ? 'opacity-100' : 'opacity-0'
             }`}
-          />
+          >
+            {/* the same glow the scene gives the pad, painted: a pool behind it and a halo on its edge */}
+            <div className="stage-still-glow absolute inset-[-12%]" />
+            <img
+              src="/stills/controller.webp"
+              alt=""
+              width={1600}
+              height={1000}
+              decoding="async"
+              className="relative w-full [filter:drop-shadow(0_0_18px_rgb(var(--ch-accent)/0.35))_drop-shadow(0_0_60px_rgb(var(--ch-lamp)/0.25))]"
+            />
+          </div>
         ) : null}
       </div>
       <div data-stage-layer className="absolute inset-0">

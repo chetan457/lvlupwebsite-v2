@@ -56,3 +56,6 @@ export const activeChapter = signal(0);
 export const bootDone = signal(false);
 
 export const menuOpen = signal(false);
+
+/** Slug of the game whose trailer is playing, or null. The scene pauses while one is. */
+export const trailerGame = signal<string | null>(null);

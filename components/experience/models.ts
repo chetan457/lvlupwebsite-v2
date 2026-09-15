@@ -44,7 +44,15 @@ export type Transition = {
   range: { value: THREE.Vector2 };
 };
 
-type DustShared = { time: { value: number }; scale: { value: number }; count: number };
+type DustShared = {
+  time: { value: number };
+  scale: { value: number };
+  count: number;
+  /** Halo sprites per model. */
+  glowCount: number;
+  /** Every dust cloud, so the frame-rate check can thin them. */
+  clouds: THREE.Points[];
+};
 
 export type HeroModel = {
   /** Positioned, scaled and spun by the scene exactly like its voxel formation. */
@@ -52,6 +60,8 @@ export type HeroModel = {
   transition: Transition;
   /** False until its .glb has loaded. */
   ready: boolean;
+  /** Starts fetching the .glb the first time it is called; cheap to call every frame. */
+  request: () => void;
   update: (elapsed: number) => void;
 };
 
@@ -300,10 +310,20 @@ function addDust(ctx: Ctx, inner: THREE.Object3D) {
 
   ctx.transition.range.value.set(min, max);
 
+  // shuffled, so drawing only the first half (when a slow device is thinned) still covers every part
+  for (let i = written - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    for (let k = 0; k < 3; k++) {
+      [positions[i * 3 + k], positions[j * 3 + k]] = [positions[j * 3 + k], positions[i * 3 + k]];
+      [seeds[i * 3 + k], seeds[j * 3 + k]] = [seeds[j * 3 + k], seeds[i * 3 + k]];
+    }
+  }
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 3));
   geometry.setDrawRange(0, written);
+  geometry.userData.written = written;
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
@@ -331,6 +351,143 @@ function addDust(ctx: Ctx, inner: THREE.Object3D) {
   dust.frustumCulled = false;
   dust.userData.noDust = true;
   inner.add(dust);
+  ctx.dust.clouds.push(dust);
+}
+
+/*
+ * Halos: glow that does not depend on bloom.
+ *
+ * Bloom is a post effect, and it is the first thing a slow GPU, a battery saver or a
+ * device without float render targets loses. These are soft additive sprites sampled
+ * over each model's glowing surfaces, sized in world units, so a light bar glows the
+ * same on a phone without bloom as on a desktop with it. Bloom, where it runs, adds a
+ * little on top rather than being the only source of glow.
+ */
+const haloVertex = /* glsl */ `
+  attribute vec3 aColor;
+  uniform float uReveal;
+  uniform float uMode;
+  uniform float uScale;
+  uniform float uSize;
+  varying vec3 vColor;
+  varying float vAlpha;
+
+  ${DISSOLVE_NOISE}
+  ${SWEEP}
+
+  void main() {
+    // follows the snap and the build: a halo exists only where its surface does
+    float s = lvlSweep(position);
+    float q = uMode > 0.5 ? 1.0 - uReveal : uReveal;
+    float left = uMode > 0.5 ? s - q : q - s;
+    vAlpha = (uReveal <= 0.001 || (uReveal < 0.999 && left < 0.0)) ? 0.0 : 1.0;
+    vColor = aColor;
+
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    // nudged toward the camera, so the surface a sprite sits on does not cut it in half
+    mv.z += 0.15;
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = vAlpha > 0.0 ? min(uSize * uScale / max(-mv.z, 0.1), 256.0) : 0.0;
+  }
+`;
+
+const haloFragment = /* glsl */ `
+  uniform float uOpacity;
+  varying vec3 vColor;
+  varying float vAlpha;
+
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    if (d > 1.0) discard;
+    float falloff = 1.0 - d;
+    gl_FragColor = vec4(vColor, falloff * falloff * uOpacity * vAlpha);
+    #include <colorspace_fragment>
+  }
+`;
+
+/** Nodes the site animates; halos are static, so they are not sampled from these. */
+const ANIMATED_NODES = new Set(['arrow', 'pin']);
+
+function glowColour(mesh: THREE.Mesh): THREE.Color | null {
+  if (typeof mesh.userData.glow === 'string') return new THREE.Color(mesh.userData.glow);
+  let animated = false;
+  mesh.traverseAncestors((node) => {
+    if (ANIMATED_NODES.has(node.name)) animated = true;
+  });
+  if (animated) return null;
+  const material = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.MeshStandardMaterial;
+  if (!material?.emissive) return null;
+  const strength = material.emissiveIntensity ?? 1;
+  const e = material.emissive;
+  // only parts that actually read as lights: accent at strength ≥ ~1.3, not faint tints
+  if ((e.r * 0.2126 + e.g * 0.7152 + e.b * 0.0722) * strength < 0.5) return null;
+  return e.clone().multiplyScalar(Math.min(strength, 2.5) / 2.5);
+}
+
+function addHalos(ctx: Ctx, inner: THREE.Object3D) {
+  inner.updateMatrixWorld(true);
+  const toInner = inner.matrixWorld.clone().invert();
+
+  const sources: { mesh: THREE.Mesh; matrix: THREE.Matrix4; area: number; colour: THREE.Color }[] = [];
+  inner.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || mesh.userData.noDust || !mesh.geometry.getAttribute('position')) return;
+    const colour = glowColour(mesh);
+    if (!colour) return;
+    const matrix = toInner.clone().multiply(mesh.matrixWorld);
+    const area = surfaceArea(mesh.geometry, matrix);
+    if (area > 1e-4) sources.push({ mesh, matrix, area, colour });
+  });
+  const total = sources.reduce((sum, source) => sum + source.area, 0);
+  if (!total) return;
+
+  const count = ctx.dust.glowCount;
+  const positions = new Float32Array(count * 3);
+  const colours = new Float32Array(count * 3);
+  const point = new THREE.Vector3();
+  let written = 0;
+
+  sources.forEach((source, k) => {
+    // a floor per part, so a small light (a button ring) still gets a halo next to a big panel
+    const wanted = k === sources.length - 1 ? count - written : Math.max(6, Math.round((count * source.area) / total));
+    const share = Math.min(count - written, wanted);
+    if (share <= 0) return;
+    const sampler = new MeshSurfaceSampler(source.mesh).build();
+    for (let i = 0; i < share; i++) {
+      sampler.sample(point);
+      point.applyMatrix4(source.matrix);
+      positions.set([point.x, point.y, point.z], written * 3);
+      colours.set([source.colour.r, source.colour.g, source.colour.b], written * 3);
+      written++;
+    }
+  });
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aColor', new THREE.BufferAttribute(colours, 3));
+  geometry.setDrawRange(0, written);
+
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uReveal: ctx.transition.reveal,
+      uMode: ctx.transition.mode,
+      uSweepRange: ctx.transition.range,
+      uSweepDir: SWEEP_DIR,
+      uScale: ctx.dust.scale,
+      uSize: { value: 0.32 },
+      uOpacity: { value: 0.16 },
+    },
+    vertexShader: haloVertex,
+    fragmentShader: haloFragment,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const halos = new THREE.Points(geometry, material);
+  halos.frustumCulled = false;
+  halos.userData.noDust = true;
+  inner.add(halos);
 }
 
 type Surface = {
@@ -403,6 +560,7 @@ function wrap(
     root,
     transition: ctx.transition,
     ready: false,
+    request: () => {},
     update(elapsed) {
       // last frame's matrix: a frame of lag in the sweep is invisible
       ctx.transition.space.value.copy(inner.matrixWorld).invert();
@@ -475,13 +633,33 @@ function load(ctx: Ctx, name: string, onLoad: (scene: THREE.Group) => void) {
       });
       onLoad(gltf.scene);
       // every builder parents the scene into its model group before this runs
-      if (gltf.scene.parent) addDust(ctx, gltf.scene.parent);
+      // sampling thousands of surface points is a long task; do it when the page is idle
+      const parent = gltf.scene.parent;
+      if (parent) {
+        const sample = () => {
+          if (ctx.state.disposed) return;
+          addHalos(ctx, parent);
+          addDust(ctx, parent);
+        };
+        if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(sample, { timeout: 800 });
+        else window.setTimeout(sample, 0);
+      }
     },
     undefined,
     () => {
       // left unready: the chapter keeps its voxel formation
     },
   );
+}
+
+/** Arms a model's `request`, so its .glb is only fetched once the scroll gets near its chapter. */
+function deferLoad(model: HeroModel, ctx: Ctx, name: string, onLoad: (scene: THREE.Group) => void) {
+  let requested = false;
+  model.request = () => {
+    if (requested) return;
+    requested = true;
+    load(ctx, name, onLoad);
+  };
 }
 
 // --- textures -------------------------------------------------------------------
@@ -599,7 +777,7 @@ function canvasTexture(
 function controller(ctx: Ctx): HeroModel {
   const inner = new THREE.Group();
   const model = wrap(ctx, inner, { rx: -0.42, ry: -0.5, rz: 0.1, k: 0.8 });
-  load(ctx, 'controller', (scene) => {
+  deferLoad(model, ctx, 'controller', (scene) => {
     inner.add(scene);
     model.ready = true;
   });
@@ -797,7 +975,7 @@ function bays(ctx: Ctx): HeroModel {
   }
 
   const model = wrap(ctx, inner, { rx: 0.12, ry: -0.42, k: 0.72 });
-  load(ctx, 'bays', (scene) => {
+  deferLoad(model, ctx, 'bays', (scene) => {
     inner.add(scene);
     model.ready = true;
   });
@@ -840,7 +1018,7 @@ function ratePillars(ctx: Ctx, amounts: number[]): HeroModel {
     arrow.position.y = arrowY + Math.sin(t * 2) * 0.12;
     arrow.rotation.y = t * 1.2;
   });
-  load(ctx, 'rates', (scene) => {
+  deferLoad(model, ctx, 'rates', (scene) => {
     arrow = scene.getObjectByName('arrow') ?? null;
     arrowY = arrow?.position.y ?? 0;
     inner.add(scene);
@@ -872,7 +1050,7 @@ function trophy(ctx: Ctx): HeroModel {
   ctx.add(inner, new THREE.PlaneGeometry(1.7, 0.32), plateMaterial, 0, -2.08, 1.152);
 
   const model = wrap(ctx, inner, { rx: 0.2, ry: 0.3, k: 0.8 });
-  load(ctx, 'trophy', (scene) => {
+  deferLoad(model, ctx, 'trophy', (scene) => {
     inner.add(scene);
     model.ready = true;
   });
@@ -968,7 +1146,7 @@ function pin(ctx: Ctx): HeroModel {
       (ripple.material as THREE.MeshStandardMaterial).opacity = (1 - phase) * 0.9;
     });
   });
-  load(ctx, 'pin', (scene) => {
+  deferLoad(model, ctx, 'pin', (scene) => {
     floater = scene.getObjectByName('pin') ?? null;
     inner.add(scene);
     model.ready = true;
@@ -1002,6 +1180,8 @@ export function createModels(palette: Palette, options: { rates: number[]; quali
     time: { value: 0 },
     scale: { value: 1000 },
     count: options.quality === 'high' ? 14000 : 5000,
+    glowCount: options.quality === 'high' ? 420 : 240,
+    clouds: [],
   };
   const build = () => context(palette, surface, redraws, state, dust);
 
@@ -1022,6 +1202,13 @@ export function createModels(palette: Palette, options: { rates: number[]; quali
     frame(time: number, scale: number) {
       dust.time.value = time;
       dust.scale.value = scale;
+    },
+    /** For a device that cannot keep up: draw half the transition specks. */
+    thin() {
+      for (const cloud of dust.clouds) {
+        const written = cloud.geometry.userData.written as number;
+        cloud.geometry.setDrawRange(0, Math.floor(written / 2));
+      }
     },
     dispose() {
       state.disposed = true;

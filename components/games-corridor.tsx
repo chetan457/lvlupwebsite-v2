@@ -83,6 +83,10 @@ export function GamesCorridor({
 
         card.style.transform = `translate3d(${x}px, ${y}px, ${z.toFixed(1)}px) rotateY(${side * -27}deg)`;
         card.style.opacity = opacity.toFixed(3);
+        // Only discs near enough to read take clicks, so a faint one behind can never open the
+        // wrong trailer. The rail itself ignores the pointer: its flat box sits at z=0, in front
+        // of every disc in 3D hit-testing, and would swallow the click otherwise.
+        card.style.pointerEvents = opacity > 0.6 && z > -1600 ? 'auto' : 'none';
 
         // whichever disc is at reading distance names itself in the readout
         const gap = Math.abs(z + 880);
@@ -116,6 +120,7 @@ export function GamesCorridor({
         card.style.transform = '';
         card.style.opacity = '';
         card.style.visibility = '';
+        card.style.pointerEvents = '';
       });
     };
   }, []);
@@ -139,7 +144,7 @@ export function GamesCorridor({
 
         <ul
           ref={railRef}
-          className="absolute inset-0 [transform-style:preserve-3d] motion-reduce:static motion-reduce:grid motion-reduce:grid-cols-4 motion-reduce:gap-6 motion-reduce:px-[var(--gutter)] motion-reduce:py-4"
+          className="pointer-events-none absolute inset-0 [transform-style:preserve-3d] motion-reduce:static motion-reduce:grid motion-reduce:grid-cols-4 motion-reduce:gap-6 motion-reduce:px-[var(--gutter)] motion-reduce:py-4"
         >
           {games.map((game, index) => (
             <li
@@ -150,7 +155,7 @@ export function GamesCorridor({
                 once the scroll handler is attached, so no-JS is not a blank
                 corridor.
               */
-              className="absolute left-1/2 top-1/2 -ml-[7.5rem] -mt-[11.5rem] w-60 [transform-style:preserve-3d] motion-reduce:static motion-reduce:m-0 motion-reduce:w-auto"
+              className="pointer-events-auto absolute left-1/2 top-1/2 -ml-[7.5rem] -mt-[11.5rem] w-60 [transform-style:preserve-3d] motion-reduce:static motion-reduce:m-0 motion-reduce:w-auto"
               style={{
                 transform: `translate3d(${index % 2 ? 300 : -300}px, ${((index % 4) - 1.5) * 40}px, ${-index * 90}px) rotateY(${(index % 2 ? 1 : -1) * -27}deg)`,
                 opacity: index < 4 ? 1 : 0.25,

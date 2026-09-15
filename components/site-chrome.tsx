@@ -185,6 +185,23 @@ export function SiteChrome() {
         </div>
       </div>
 
+      {/* phones: the level HUD as a slim progress bar under the header */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed inset-x-[var(--gutter)] top-[4.6rem] z-50 flex gap-1 transition-opacity duration-500 lg:hidden ${
+          booted && !open ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {chapterNav.map((item, i) => (
+          <span
+            key={item.id}
+            className={`h-[3px] flex-1 transition-colors duration-500 ${
+              i === chapter ? 'bg-accent' : i < chapter ? 'bg-accent/40' : 'bg-edge-hi'
+            }`}
+          />
+        ))}
+      </div>
+
       {/* the level HUD: where you are in the run */}
       <div
         aria-hidden="true"
