@@ -53,11 +53,8 @@ export function localBusinessSchema() {
       postalCode: site.address.postalCode,
       addressCountry: site.address.country,
     },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: site.geo.lat,
-      longitude: site.geo.lng,
-    },
+    // omitted rather than guessed: a wrong pin in structured data misdirects Maps
+    ...(site.geo ? { geo: { '@type': 'GeoCoordinates', latitude: site.geo.lat, longitude: site.geo.lng } } : {}),
     sameAs: [site.instagram],
     openingHoursSpecification: hours
       .filter((h) => h.opens && h.closes)

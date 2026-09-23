@@ -18,8 +18,8 @@ export const site = {
    * card or a share sheet needs the tagline-length version.
    */
   description:
-    'A PS5 lounge in Kalyani Nagar, Pune. 5 bays, big screens, controllers cleaned between sessions. Book by the hour from ₹90 on a weekday afternoon, or take the whole room for a party.',
-  shortDescription: 'PS5 by the hour in Kalyani Nagar, Pune. From ₹90.',
+    'A PS5 lounge in Nadiad, Gujarat. 5 bays, big screens, controllers cleaned between sessions. Book by the hour from ₹90 on a weekday afternoon, or take the whole room for a party.',
+  shortDescription: 'PS5 by the hour in Nadiad, Gujarat. From ₹90.',
 
   /** Set to the real domain before launch; used for canonicals and OG tags. */
   url: 'https://lvlup-lounge.example',
@@ -29,20 +29,27 @@ export const site = {
   whatsapp: '918401665488',
   email: 'bookings@lvlup-lounge.example',
 
+  /*
+   * From the lease dated 17/09/2026: offices 332-333, third floor, Nadiad Nexus-I,
+   * 640 sq ft, taken for 11 months from 15/10/2026. TO CONFIRM before launch:
+   * the road Nexus-I stands on, the building's own PIN (387001 is the one on the
+   * lease's Nadiad address), and the Google Maps pin for `geo`.
+   */
   address: {
-    line1: 'Shop 4, First floor, Meridian Plaza',
-    line2: 'Lane 6, Kalyani Nagar',
-    locality: 'Kalyani Nagar',
-    city: 'Pune',
-    region: 'Maharashtra',
-    postalCode: '411006',
+    line1: 'Office 332–333, Third floor',
+    line2: 'Nadiad Nexus-I',
+    locality: 'Nadiad Nexus-I',
+    city: 'Nadiad',
+    region: 'Gujarat',
+    postalCode: '387001',
     country: 'IN',
   },
 
-  landmark: 'Above Kayani Bakery, opposite the HP pump',
-  transit: '3 min from Ramwadi metro',
-  geo: { lat: 18.5484, lng: 73.9042 },
-  mapsUrl: 'https://maps.google.com/?q=Kalyani+Nagar+Pune',
+  landmark: 'Third floor of Nadiad Nexus-I',
+  transit: 'Lift to the third floor, offices 332–333',
+  /** Null until the real pin is known: wrong coordinates send people to the wrong street. */
+  geo: null as { lat: number; lng: number } | null,
+  mapsUrl: 'https://maps.google.com/?q=Nadiad+Nexus-I%2C+Nadiad%2C+Gujarat',
 
   instagram: 'https://instagram.com/lvlup.lounge',
   instagramHandle: '@lvlup.lounge',

@@ -1044,7 +1044,7 @@ function trophy(ctx: Ctx): HeroModel {
     g.font = `600 34px ${cssFont('--font-chakra', 'sans-serif')}`;
     g.fillText('SATURDAY BRACKET', w / 2, 44);
     g.font = `500 20px ${cssFont('--font-geist-mono', 'monospace')}`;
-    g.fillText('LVL UP · KALYANI NAGAR', w / 2, 78);
+    g.fillText('LVL UP · NADIAD', w / 2, 78);
   });
   const plateMaterial = ctx.mat(new THREE.MeshStandardMaterial({ map: plate, metalness: 0.6, roughness: 0.35 }));
   ctx.add(inner, new THREE.PlaneGeometry(1.7, 0.32), plateMaterial, 0, -2.08, 1.152);

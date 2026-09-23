@@ -75,7 +75,7 @@ export function istNow(now: Date = new Date()): { day: number; minutes: number }
   return { day, minutes: hour * 60 + minute };
 }
 
-/** Today in Kalyani Nagar, for highlighting the right row of the week. */
+/** Today in Nadiad, for highlighting the right row of the week. */
 export function istDay(now: Date = new Date()): number {
   return istNow(now).day;
 }
