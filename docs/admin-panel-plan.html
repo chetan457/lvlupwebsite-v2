@@ -1,0 +1,855 @@
+<title>LVL UP Ops Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    /* the v2 site's Midnight palette, so the console reads as the same product */
+    --room: #050608;
+    --room-deep: #030406;
+    --surface: #0b0f16;
+    --surface-hi: #121823;
+    --edge: #1b2432;
+    --edge-hi: #2a3749;
+    --paper: #f5f7fa;
+    --dim: #a7b0bb;
+    --dimmer: #6c7684;
+    --accent: #00a8ff;
+    --lamp: #0070d1;
+    --live: #27d17f;
+    --warn: #f5a524;
+    --crit: #ff5a5f;
+    --glow: rgba(0, 168, 255, 0.28);
+
+    --display: 'Chakra Petch', 'Trebuchet MS', sans-serif;
+    --sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+
+    --gutter: clamp(1rem, 4vw, 3.5rem);
+    --radius: 10px;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--room);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 78rem;
+    margin: 0 auto;
+    padding-inline: var(--gutter);
+  }
+
+  h1, h2, h3, h4 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.05; }
+  h1 { font-size: clamp(2.1rem, 5.2vw, 3.4rem); text-transform: uppercase; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); text-transform: uppercase; }
+  h3 { font-size: 1.12rem; }
+  h4 { font-size: 0.95rem; }
+  p { margin: 0; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+  }
+  .muted { color: var(--dim); }
+  .dimmer { color: var(--dimmer); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- masthead ---------- */
+  header.top {
+    border-bottom: 1px solid var(--edge);
+    background:
+      radial-gradient(70% 120% at 85% -10%, rgba(0, 168, 255, 0.16), transparent 62%),
+      var(--room-deep);
+  }
+  .top-inner { display: flex; flex-wrap: wrap; gap: 1.5rem 2rem; align-items: flex-end; justify-content: space-between; padding-block: clamp(2.2rem, 6vw, 3.6rem) clamp(1.6rem, 4vw, 2.4rem); }
+  .brand { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.1rem; }
+  .mark { width: 26px; height: 26px; display: block; }
+  .brand-name { font-family: var(--display); font-weight: 700; letter-spacing: 0.06em; font-size: 1rem; text-transform: uppercase; }
+  .brand-name span { color: var(--accent); }
+  .sub { margin-top: 1rem; max-width: 46ch; color: var(--dim); }
+  .facts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid var(--edge-hi); color: var(--dim); padding: 0.45rem 0.7rem; border-radius: 999px;
+  }
+
+  main { display: flex; flex-direction: column; gap: clamp(3rem, 7vw, 5rem); padding-block: clamp(2.5rem, 6vw, 4rem) 4rem; }
+  section { scroll-margin-top: 1rem; }
+  .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.75rem 2rem; margin-bottom: 1.5rem; }
+  .sec-head p { max-width: 58ch; color: var(--dim); }
+
+  /* ---------- prototype shell ---------- */
+  .console {
+    border: 1px solid var(--edge-hi);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+    box-shadow: 0 40px 90px -50px #000;
+  }
+  .console-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+    padding: 0.85rem 1rem; border-bottom: 1px solid var(--edge);
+    background: var(--room-deep);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--live); box-shadow: 0 0 10px var(--live); }
+  .bar-title { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+  .bar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; font-family: var(--mono); font-size: 0.72rem; color: var(--dimmer); }
+
+  .pad { padding: clamp(1rem, 3vw, 1.75rem); }
+
+  /* ---------- login ---------- */
+  .login { display: grid; place-items: center; min-height: 23rem; padding-block: 2.5rem; }
+  .login-card { width: min(100%, 23rem); display: flex; flex-direction: column; gap: 0.9rem; }
+  .login-card h3 { margin-bottom: 0.1rem; }
+  label { display: block; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.35rem; }
+  input, select {
+    width: 100%; background: var(--room-deep); color: var(--paper);
+    border: 1px solid var(--edge-hi); border-radius: 6px; padding: 0.65rem 0.7rem;
+    font-family: var(--mono); font-size: 0.9rem; min-height: 44px;
+  }
+  input::placeholder { color: var(--dimmer); }
+
+  button {
+    font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase;
+    border-radius: 6px; border: 1px solid var(--edge-hi); background: transparent; color: var(--paper);
+    padding: 0.6rem 0.9rem; min-height: 40px; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--lamp); border-color: var(--lamp); color: #fff; }
+  button.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--room); }
+  button.danger:hover { border-color: var(--crit); color: var(--crit); }
+  button[disabled] { opacity: 0.35; pointer-events: none; }
+  .note { font-size: 0.8rem; color: var(--dimmer); }
+
+  /* ---------- tabs ---------- */
+  .tabs { display: flex; gap: 0.25rem; overflow-x: auto; border-bottom: 1px solid var(--edge); padding: 0 0.5rem; background: var(--room-deep); }
+  .tab {
+    border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none;
+    color: var(--dim); padding: 0.85rem 0.85rem; white-space: nowrap; min-height: 44px;
+  }
+  .tab[aria-selected="true"] { color: var(--paper); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--paper); }
+
+  /* ---------- summary strip ---------- */
+  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 1px; background: var(--edge); border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; margin-bottom: 1.25rem; }
+  .stat { background: var(--surface-hi); padding: 0.9rem 1rem; }
+  .stat .k { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dimmer); }
+  .stat .v { font-family: var(--mono); font-size: 1.45rem; font-variant-numeric: tabular-nums; margin-top: 0.3rem; }
+  .stat .v.on { color: var(--live); }
+
+  /* ---------- station grid ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.9rem; }
+  .station {
+    border: 1px solid var(--edge); border-left: 3px solid var(--edge-hi); border-radius: 8px;
+    background: var(--surface-hi); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .station.running { border-left-color: var(--live); }
+  .station.over { border-left-color: var(--warn); }
+  .station-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .kind { font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dimmer); margin-top: 0.3rem; display: block; }
+  .pill { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.3rem 0.55rem; border-radius: 999px; border: 1px solid var(--edge-hi); color: var(--dim); white-space: nowrap; }
+  .pill.on { color: var(--live); border-color: rgba(39, 209, 127, 0.45); background: rgba(39, 209, 127, 0.08); }
+  .pill.warn { color: var(--warn); border-color: rgba(245, 165, 36, 0.45); background: rgba(245, 165, 36, 0.08); }
+  .clock { font-family: var(--mono); font-size: 2rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1; }
+  .clock.idle { color: var(--dimmer); }
+  .clock.on { color: var(--paper); text-shadow: 0 0 22px var(--glow); }
+  .meta { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.82rem; color: var(--dim); }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: auto; }
+  .start-form { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+  .start-form input { font-size: 0.82rem; }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--edge); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 34rem; }
+  th, td { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--edge); }
+  th { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--dimmer); background: var(--room-deep); position: sticky; top: 0; }
+  td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tfoot td { font-family: var(--mono); font-weight: 500; background: var(--room-deep); border-top: 1px solid var(--edge-hi); }
+  .empty { padding: 2rem 1rem; text-align: center; color: var(--dimmer); }
+
+  /* ---------- plan prose ---------- */
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+  .panel { border: 1px solid var(--edge); border-radius: 8px; padding: 1.1rem; background: var(--surface); }
+  .panel h4 { margin-bottom: 0.5rem; }
+  .panel p, .panel li { color: var(--dim); font-size: 0.9rem; }
+  ul.tight { margin: 0.4rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+  code { font-family: var(--mono); font-size: 0.85em; color: var(--accent); background: rgba(0, 168, 255, 0.08); padding: 0.1rem 0.3rem; border-radius: 4px; }
+
+  .phase { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem 1.1rem; align-items: start; }
+  .phase + .phase { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--edge); }
+  .phase .tag { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; color: var(--room); background: var(--accent); padding: 0.25rem 0.5rem; border-radius: 4px; white-space: nowrap; }
+  .phase .tag.later { background: var(--edge-hi); color: var(--dim); }
+
+  .ask { border-left: 2px solid var(--warn); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .ask li { color: var(--paper); }
+
+  footer { border-top: 1px solid var(--edge); padding-block: 2rem 3rem; color: var(--dimmer); font-size: 0.85rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 10 10" aria-hidden="true">
+          <g fill="#00a8ff">
+            <rect x="0" y="0" width="2" height="10"></rect>
+            <rect x="2" y="8" width="4" height="2"></rect>
+            <rect x="6" y="0" width="2" height="2"></rect>
+            <rect x="8" y="2" width="2" height="2"></rect>
+            <rect x="6" y="4" width="2" height="2"></rect>
+          </g>
+        </svg>
+        <span class="brand-name">LVL<span>UP</span> &nbsp;OPS</span>
+      </div>
+      <p class="eyebrow">Build plan &amp; working prototype</p>
+      <h1>The console<br>behind the floor</h1>
+      <p class="sub">
+        A staff login, a live timer on every station, and a day sheet that adds up at closing.
+        Everything below the plan is clickable — the timers run, the day sheet fills in, and you can
+        add a VR arena or a second racing rig and watch it appear on the floor.
+      </p>
+    </div>
+    <div class="facts">
+      <span class="chip">Nadiad Nexus-I</span>
+      <span class="chip">Next.js + Postgres</span>
+      <span class="chip">Phase 1 ≈ 1 week</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ================= PROTOTYPE ================= -->
+  <section id="prototype">
+    <div class="sec-head">
+      <h2>Prototype</h2>
+      <p>Click through it. State is kept in this browser only — nothing is sent anywhere, and any ID and password opens it.</p>
+    </div>
+
+    <div class="console">
+      <div class="console-bar">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="bar-title">LVL UP · Nadiad · Floor console</span>
+        <div class="bar-right">
+          <span id="clock-now">--:--</span>
+          <span id="who" hidden></span>
+          <button id="signout" hidden>Sign out</button>
+        </div>
+      </div>
+
+      <!-- login -->
+      <div id="login" class="login pad">
+        <form class="login-card" id="login-form">
+          <h3>Staff sign in</h3>
+          <p class="note">Prototype only. In the real panel these are checked on the server against a hashed password, and three bad tries lock the account for 15 minutes.</p>
+          <div>
+            <label for="admin-id">Staff ID</label>
+            <input id="admin-id" name="id" autocomplete="username" placeholder="chetan" value="chetan">
+          </div>
+          <div>
+            <label for="admin-pass">Password</label>
+            <input id="admin-pass" name="pass" type="password" autocomplete="current-password" placeholder="••••••••" value="demo">
+          </div>
+          <button class="primary" type="submit">Open the floor</button>
+        </form>
+      </div>
+
+      <!-- console -->
+      <div id="app" hidden>
+        <div class="tabs" role="tablist" aria-label="Console sections">
+          <button class="tab" role="tab" id="tab-floor" aria-controls="view-floor" aria-selected="true">Floor</button>
+          <button class="tab" role="tab" id="tab-day" aria-controls="view-day" aria-selected="false">Day sheet</button>
+          <button class="tab" role="tab" id="tab-stations" aria-controls="view-stations" aria-selected="false">Stations</button>
+          <button class="tab" role="tab" id="tab-access" aria-controls="view-access" aria-selected="false">Access</button>
+        </div>
+
+        <!-- floor -->
+        <div class="pad" id="view-floor" role="tabpanel" aria-labelledby="tab-floor">
+          <div class="strip">
+            <div class="stat"><div class="k">In play</div><div class="v on" id="s-running">0</div></div>
+            <div class="stat"><div class="k">Free</div><div class="v" id="s-free">0</div></div>
+            <div class="stat"><div class="k">Sessions today</div><div class="v" id="s-count">0</div></div>
+            <div class="stat"><div class="k">Taken today</div><div class="v" id="s-money">₹0</div></div>
+          </div>
+          <div class="grid" id="floor"></div>
+        </div>
+
+        <!-- day sheet -->
+        <div class="pad" id="view-day" role="tabpanel" aria-labelledby="tab-day" hidden>
+          <div class="strip">
+            <div class="stat"><div class="k">Closed sessions</div><div class="v" id="d-count">0</div></div>
+            <div class="stat"><div class="k">Hours played</div><div class="v" id="d-hours">0.0</div></div>
+            <div class="stat"><div class="k">Cash</div><div class="v" id="d-cash">₹0</div></div>
+            <div class="stat"><div class="k">UPI</div><div class="v" id="d-upi">₹0</div></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Station</th><th>Guest</th><th>Start</th><th>End</th><th>Billed</th><th>Paid</th><th>Amount</th></tr>
+              </thead>
+              <tbody id="day-rows"></tbody>
+              <tfoot><tr><td colspan="6">Total</td><td class="n" id="day-total">₹0</td></tr></tfoot>
+            </table>
+          </div>
+          <p class="note" style="margin-top:0.9rem">
+            Closing the day locks these rows and writes a summary row. After that a correction is a new
+            entry with a reason, never an edit — that is what makes the sheet an audit trail.
+          </p>
+        </div>
+
+        <!-- stations -->
+        <div class="pad" id="view-stations" role="tabpanel" aria-labelledby="tab-stations" hidden>
+          <div class="cols" style="margin-bottom:1.25rem">
+            <div class="panel">
+              <h4>Add a station</h4>
+              <p>New kinds of station are rows, not code. Add a VR arena and it is on the floor, in the rate card and in the day sheet immediately.</p>
+              <form id="add-station" style="display:flex;flex-direction:column;gap:0.7rem;margin-top:0.9rem">
+                <div>
+                  <label for="st-name">Name</label>
+                  <input id="st-name" placeholder="VR 02" required>
+                </div>
+                <div>
+                  <label for="st-kind">Kind</label>
+                  <select id="st-kind">
+                    <option>PS5 bay</option>
+                    <option>VR arena</option>
+                    <option>Racing rig</option>
+                    <option>Gaming PC</option>
+                    <option>Party room</option>
+                  </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem">
+                  <div>
+                    <label for="st-rate">₹ / hour</label>
+                    <input id="st-rate" type="number" min="0" step="10" value="250">
+                  </div>
+                  <div>
+                    <label for="st-seats">Seats</label>
+                    <input id="st-seats" type="number" min="1" max="20" value="2">
+                  </div>
+                </div>
+                <button class="primary" type="submit">Add station</button>
+              </form>
+            </div>
+            <div class="panel">
+              <h4>Billing rules</h4>
+              <p>One place, applied to every station and shown on the guest's running total:</p>
+              <ul class="tight">
+                <li>First 30 minutes are the minimum charge.</li>
+                <li>After that, time rounds up in 15-minute blocks.</li>
+                <li>The rate is copied onto the session at start, so a later price change never rewrites yesterday.</li>
+                <li>Happy-hour and weekend rates attach to a station kind and a time window.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Station</th><th>Kind</th><th>Seats</th><th>₹ / hour</th><th>State</th><th></th></tr></thead>
+              <tbody id="station-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- access -->
+        <div class="pad" id="view-access" role="tabpanel" aria-labelledby="tab-access" hidden>
+          <div class="cols">
+            <div class="panel">
+              <h4>Who can do what</h4>
+              <div class="table-wrap" style="margin-top:0.7rem">
+                <table>
+                  <thead><tr><th>Role</th><th>Floor</th><th>Day sheet</th><th>Rates &amp; staff</th></tr></thead>
+                  <tbody>
+                    <tr><td>Owner</td><td>Yes</td><td>Yes, can close</td><td>Yes</td></tr>
+                    <tr><td>Manager</td><td>Yes</td><td>Yes, can close</td><td>Rates only</td></tr>
+                    <tr><td>Staff</td><td>Yes</td><td>Today only</td><td>No</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="note" style="margin-top:0.8rem">Every start, stop, discount and sign-in is written to an audit log with the staff ID and time.</p>
+            </div>
+            <div class="panel">
+              <h4>Your login</h4>
+              <p>Send me the ID and password you want and I will set the owner account up. The password is stored only as an Argon2 hash — not in the code, not in the repo, and not readable by me afterwards.</p>
+              <ul class="tight">
+                <li>Session cookie, HTTP-only, expires after 12 hours.</li>
+                <li>Signing out everywhere invalidates old cookies.</li>
+                <li>Staff accounts are added from this screen, each with their own password.</li>
+              </ul>
+              <p class="note" style="margin-top:0.8rem">Send credentials over WhatsApp or a password manager link, never in a public issue.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PLAN ================= -->
+  <section id="plan">
+    <div class="sec-head">
+      <h2>How it gets built</h2>
+      <p>The console lives inside the existing v2 site at <code>/admin</code>, so there is one deploy, one domain and one set of brand styles.</p>
+    </div>
+
+    <div class="cols">
+      <div class="panel">
+        <h4>Stack</h4>
+        <ul class="tight">
+          <li>Next.js App Router, server actions — same app, new <code>/admin</code> area.</li>
+          <li>Postgres (Neon or Supabase, free tier is plenty) with Drizzle for migrations.</li>
+          <li>Session cookies signed server-side; Argon2id password hashes.</li>
+          <li>Runs on the Hostinger Node app you already deploy to.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Why a database, not a spreadsheet</h4>
+        <ul class="tight">
+          <li>Two phones can run the floor at once without overwriting each other.</li>
+          <li>A crashed tab or a dead battery loses nothing — the timer is a start time on the server.</li>
+          <li>Closed days cannot be quietly edited.</li>
+          <li>Reports are a query, not a copy-paste.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>How a timer actually works</h4>
+        <ul class="tight">
+          <li>Start writes <code>started_at</code> on the server; the browser only counts up from it.</li>
+          <li>Any device opening the floor sees the same elapsed time.</li>
+          <li>Stop computes the bill on the server from the stored rate and rules.</li>
+          <li>Pressing stop twice cannot double-bill: the session is already closed.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="margin:2rem 0 1rem">What gets stored</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>Holds</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="n">station_kinds</td><td>PS5 bay, VR arena, racing rig, PC, party room</td><td>Adding a kind is a row, not a release</td></tr>
+          <tr><td class="n">stations</td><td>Name, kind, seats, state, display order</td><td>Retired stations are hidden, never deleted</td></tr>
+          <tr><td class="n">rates</td><td>Price per kind, with time windows</td><td>Happy hour, weekend, party rate</td></tr>
+          <tr><td class="n">sessions</td><td>Station, guest, players, start, end, rate snapshot, amount, payment</td><td>The heart of it; one row per play</td></tr>
+          <tr><td class="n">guests</td><td>Name, phone, visit count</td><td>Optional at start; powers repeat-customer counts</td></tr>
+          <tr><td class="n">day_closures</td><td>Date, totals, who closed it</td><td>Locks the day's sessions</td></tr>
+          <tr><td class="n">staff</td><td>ID, password hash, role, active</td><td>Owner, manager, staff</td></tr>
+          <tr><td class="n">audit_log</td><td>Who did what, when, to which row</td><td>Append-only</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin:2rem 0 1rem">Order of work</h3>
+    <div class="panel">
+      <div class="phase">
+        <span class="tag">Phase 1</span>
+        <div>
+          <h4>Login, floor, timers</h4>
+          <p>Staff sign-in, the station grid, start and stop with live timers, automatic billing, today's takings. This is the part that replaces the notebook, and it is usable on its own.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="tag">Phase 2</span>
+        <div>
+          <h4>Day sheet and closing</h4>
+          <p>The day's sessions, cash versus UPI split, close-the-day lock, and a month view with busiest hours and per-station utilisation.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="tag later">Phase 3</span>
+        <div>
+          <h4>Guests and offers</h4>
+          <p>Phone-number lookup, visit counts, 10-hour passes tracked against a balance, birthday and party bookings held against a station and a time.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="tag later">Phase 4</span>
+        <div>
+          <h4>Tie it to the public site</h4>
+          <p>Live "3 bays free right now" on the home page, WhatsApp receipt after a session, and a booking request that lands in the console instead of a chat thread.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:2rem 0 1rem">Before I start, I need</h3>
+    <div class="panel">
+      <ul class="tight ask">
+        <li>The owner ID and password you want (send privately — I will store only a hash).</li>
+        <li>Whether your Hostinger plan includes a database, or I should use a free hosted Postgres.</li>
+        <li>The real station list for Nadiad Nexus-I: how many PS5 bays, is there a VR setup and a racing rig, how many seats each.</li>
+        <li>The real rate card per station kind, and whether a minimum charge applies.</li>
+        <li>How many staff will have their own login.</li>
+        <li>Whether you want GST on the bill, and the GSTIN if so.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p>LVL UP Gaming Lounge · Nadiad · plan drafted 6 October 2026. Prototype data is made up and lives only in this browser.</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'lvlup-ops-proto-v1';
+  var KINDS = {
+    'PS5 bay': 120,
+    'VR arena': 250,
+    'Racing rig': 200,
+    'Gaming PC': 100,
+    'Party room': 900
+  };
+
+  function minutesAgo(m) { return Date.now() - m * 60000; }
+
+  function seed() {
+    var id = 0;
+    var next = function () { id += 1; return 's' + id; };
+    return {
+      stations: [
+        { id: next(), name: 'Bay 01', kind: 'PS5 bay', seats: 2, rate: 120, startedAt: minutesAgo(37), guest: 'Walk-in', players: 2 },
+        { id: next(), name: 'Bay 02', kind: 'PS5 bay', seats: 2, rate: 120, startedAt: null, guest: '', players: 0 },
+        { id: next(), name: 'Bay 03', kind: 'PS5 bay', seats: 4, rate: 120, startedAt: minutesAgo(12), guest: 'Dhruv', players: 4 },
+        { id: next(), name: 'Rig 01', kind: 'Racing rig', seats: 1, rate: 200, startedAt: null, guest: '', players: 0 },
+        { id: next(), name: 'VR 01', kind: 'VR arena', seats: 2, rate: 250, startedAt: minutesAgo(6), guest: 'Hetvi', players: 1 },
+        { id: next(), name: 'Party room', kind: 'Party room', seats: 8, rate: 900, startedAt: null, guest: '', players: 0 }
+      ],
+      closed: [
+        { station: 'Bay 01', guest: 'Rohan', start: minutesAgo(205), end: minutesAgo(145), minutes: 60, amount: 120, paid: 'UPI' },
+        { station: 'Bay 02', guest: 'Walk-in', start: minutesAgo(190), end: minutesAgo(160), minutes: 30, amount: 60, paid: 'Cash' },
+        { station: 'Rig 01', guest: 'Jay', start: minutesAgo(150), end: minutesAgo(105), minutes: 45, amount: 150, paid: 'UPI' },
+        { station: 'VR 01', guest: 'Mahek', start: minutesAgo(120), end: minutesAgo(90), minutes: 30, amount: 125, paid: 'Cash' }
+      ],
+      nextId: id
+    };
+  }
+
+  var state;
+  try {
+    state = JSON.parse(localStorage.getItem(KEY)) || seed();
+  } catch (e) {
+    state = seed();
+  }
+  if (!state || !state.stations) state = seed();
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private window */ }
+  }
+
+  /* ---------- billing ---------- */
+  function billedMinutes(ms) {
+    var mins = Math.max(1, Math.ceil(ms / 60000));
+    if (mins <= 30) return 30;
+    return Math.ceil(mins / 15) * 15;
+  }
+  function amountFor(rate, ms) {
+    return Math.round(rate * billedMinutes(ms) / 60);
+  }
+  function rupees(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+  function hhmmss(ms) {
+    var t = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    var pad = function (v) { return v < 10 ? '0' + v : '' + v; };
+    return (h > 0 ? h + ':' : '') + pad(m) + ':' + pad(s);
+  }
+  function clockTime(ts) {
+    return new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  /* ---------- elements ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var floor = $('floor');
+  var dayRows = $('day-rows');
+  var stationRows = $('station-rows');
+
+  /* ---------- floor ---------- */
+  function stationCard(st) {
+    var running = !!st.startedAt;
+    var card = document.createElement('article');
+    card.className = 'station' + (running ? ' running' : '');
+    card.dataset.id = st.id;
+
+    var head = document.createElement('div');
+    head.className = 'station-head';
+    head.innerHTML =
+      '<div><h4>' + escapeHtml(st.name) + '</h4><span class="kind">' + escapeHtml(st.kind) + ' · ' + st.seats + ' seats · ' + rupees(st.rate) + '/hr</span></div>' +
+      '<span class="pill' + (running ? ' on' : '') + '">' + (running ? 'In play' : 'Free') + '</span>';
+    card.appendChild(head);
+
+    var clock = document.createElement('div');
+    clock.className = 'clock ' + (running ? 'on' : 'idle');
+    clock.dataset.clock = st.id;
+    clock.textContent = running ? hhmmss(Date.now() - st.startedAt) : '00:00';
+    card.appendChild(clock);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.dataset.meta = st.id;
+    card.appendChild(meta);
+
+    var actions = document.createElement('div');
+    actions.className = 'actions';
+    if (running) {
+      var stop = document.createElement('button');
+      stop.className = 'primary';
+      stop.textContent = 'Stop & bill';
+      stop.addEventListener('click', function () { stopSession(st.id); });
+      actions.appendChild(stop);
+
+      var swap = document.createElement('button');
+      swap.textContent = 'Add 30 min';
+      swap.addEventListener('click', function () {
+        st.startedAt -= 30 * 60000;
+        save(); tick();
+      });
+      actions.appendChild(swap);
+    } else {
+      var form = document.createElement('form');
+      form.className = 'start-form';
+      form.innerHTML = '<input aria-label="Guest name for ' + escapeHtml(st.name) + '" placeholder="Guest name (optional)">';
+      var go = document.createElement('button');
+      go.className = 'primary';
+      go.type = 'submit';
+      go.textContent = 'Start';
+      form.appendChild(go);
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        startSession(st.id, form.querySelector('input').value.trim());
+      });
+      actions.appendChild(form);
+    }
+    card.appendChild(actions);
+    return card;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function renderFloor() {
+    floor.textContent = '';
+    state.stations.forEach(function (st) { floor.appendChild(stationCard(st)); });
+    tick();
+  }
+
+  function startSession(id, guest) {
+    var st = find(id);
+    if (!st || st.startedAt) return;
+    st.startedAt = Date.now();
+    st.guest = guest || 'Walk-in';
+    save();
+    renderFloor();
+  }
+
+  function stopSession(id) {
+    var st = find(id);
+    if (!st || !st.startedAt) return;
+    var elapsed = Date.now() - st.startedAt;
+    state.closed.push({
+      station: st.name,
+      guest: st.guest || 'Walk-in',
+      start: st.startedAt,
+      end: Date.now(),
+      minutes: billedMinutes(elapsed),
+      amount: amountFor(st.rate, elapsed),
+      paid: Math.random() < 0.55 ? 'UPI' : 'Cash'
+    });
+    st.startedAt = null;
+    st.guest = '';
+    save();
+    renderFloor();
+    renderDay();
+  }
+
+  function find(id) {
+    for (var i = 0; i < state.stations.length; i++) {
+      if (state.stations[i].id === id) return state.stations[i];
+    }
+    return null;
+  }
+
+  /* ---------- live tick ---------- */
+  function tick() {
+    var now = Date.now();
+    var running = 0, takenToday = 0;
+
+    state.stations.forEach(function (st) {
+      var clock = floor.querySelector('[data-clock="' + st.id + '"]');
+      var meta = floor.querySelector('[data-meta="' + st.id + '"]');
+      if (!clock || !meta) return;
+      if (st.startedAt) {
+        running += 1;
+        var elapsed = now - st.startedAt;
+        clock.textContent = hhmmss(elapsed);
+        meta.innerHTML =
+          '<span>' + escapeHtml(st.guest || 'Walk-in') + ' · from ' + clockTime(st.startedAt) + '</span>' +
+          '<span class="num">' + rupees(amountFor(st.rate, elapsed)) + '</span>';
+      } else {
+        clock.textContent = '00:00';
+        meta.innerHTML = '<span class="dimmer">Ready</span><span class="num dimmer">' + rupees(st.rate) + '/hr</span>';
+      }
+    });
+
+    state.closed.forEach(function (row) { takenToday += row.amount; });
+
+    $('s-running').textContent = running;
+    $('s-free').textContent = state.stations.length - running;
+    $('s-count').textContent = state.closed.length;
+    $('s-money').textContent = rupees(takenToday);
+    $('clock-now').textContent = clockTime(now);
+  }
+
+  /* ---------- day sheet ---------- */
+  function renderDay() {
+    dayRows.textContent = '';
+    var total = 0, cash = 0, upi = 0, minutes = 0;
+
+    if (!state.closed.length) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="7" class="empty">No sessions closed yet. Stop a running station on the floor.</td>';
+      dayRows.appendChild(tr);
+    }
+
+    state.closed.slice().sort(function (a, b) { return b.end - a.end; }).forEach(function (row) {
+      total += row.amount;
+      minutes += row.minutes;
+      if (row.paid === 'Cash') cash += row.amount; else upi += row.amount;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(row.station) + '</td>' +
+        '<td>' + escapeHtml(row.guest) + '</td>' +
+        '<td class="n">' + clockTime(row.start) + '</td>' +
+        '<td class="n">' + clockTime(row.end) + '</td>' +
+        '<td class="n">' + row.minutes + ' min</td>' +
+        '<td>' + row.paid + '</td>' +
+        '<td class="n">' + rupees(row.amount) + '</td>';
+      dayRows.appendChild(tr);
+    });
+
+    $('day-total').textContent = rupees(total);
+    $('d-count').textContent = state.closed.length;
+    $('d-hours').textContent = (minutes / 60).toFixed(1);
+    $('d-cash').textContent = rupees(cash);
+    $('d-upi').textContent = rupees(upi);
+  }
+
+  /* ---------- stations ---------- */
+  function renderStations() {
+    stationRows.textContent = '';
+    state.stations.forEach(function (st) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(st.name) + '</td>' +
+        '<td>' + escapeHtml(st.kind) + '</td>' +
+        '<td class="n">' + st.seats + '</td>' +
+        '<td class="n">' + rupees(st.rate) + '</td>' +
+        '<td>' + (st.startedAt ? 'In play' : 'Free') + '</td>';
+      var cell = document.createElement('td');
+      var remove = document.createElement('button');
+      remove.className = 'danger';
+      remove.textContent = 'Retire';
+      remove.disabled = !!st.startedAt;
+      remove.addEventListener('click', function () {
+        state.stations = state.stations.filter(function (s) { return s.id !== st.id; });
+        save(); renderFloor(); renderStations();
+      });
+      cell.appendChild(remove);
+      tr.appendChild(cell);
+      stationRows.appendChild(tr);
+    });
+  }
+
+  $('add-station').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('st-name').value.trim();
+    if (!name) return;
+    state.nextId += 1;
+    state.stations.push({
+      id: 's' + state.nextId,
+      name: name,
+      kind: $('st-kind').value,
+      seats: Math.max(1, parseInt($('st-seats').value, 10) || 1),
+      rate: Math.max(0, parseInt($('st-rate').value, 10) || 0),
+      startedAt: null,
+      guest: '',
+      players: 0
+    });
+    save();
+    $('st-name').value = '';
+    renderFloor();
+    renderStations();
+    selectTab('floor');
+  });
+
+  $('st-kind').addEventListener('change', function () {
+    var preset = KINDS[$('st-kind').value];
+    if (preset) $('st-rate').value = preset;
+  });
+
+  /* ---------- tabs ---------- */
+  var TABS = ['floor', 'day', 'stations', 'access'];
+  function selectTab(name) {
+    TABS.forEach(function (t) {
+      var tab = $('tab-' + t), view = $('view-' + t);
+      var on = t === name;
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
+      view.hidden = !on;
+    });
+  }
+  TABS.forEach(function (t) {
+    $('tab-' + t).addEventListener('click', function () { selectTab(t); });
+  });
+
+  /* ---------- login ---------- */
+  $('login-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var id = $('admin-id').value.trim() || 'staff';
+    $('login').hidden = true;
+    $('app').hidden = false;
+    $('who').hidden = false;
+    $('who').textContent = id + ' · owner';
+    $('signout').hidden = false;
+    renderFloor();
+    renderDay();
+    renderStations();
+  });
+
+  $('signout').addEventListener('click', function () {
+    $('app').hidden = true;
+    $('login').hidden = false;
+    $('who').hidden = true;
+    $('signout').hidden = true;
+  });
+
+  /* first paint, then a tick a second */
+  renderFloor();
+  renderDay();
+  renderStations();
+  setInterval(tick, 1000);
+})();
+</script>

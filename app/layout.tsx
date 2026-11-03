@@ -1,11 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Chakra_Petch, Geist, Geist_Mono } from 'next/font/google';
 
-import { BootLoader } from '@/components/boot-loader';
-import { SiteChrome } from '@/components/site-chrome';
-import { TrailerModal } from '@/components/trailer-modal';
 import { site } from '@/content/site';
-import { jsonLd, localBusinessSchema } from '@/lib/schema';
 import { indexable } from '@/lib/seo';
 
 import 'lenis/dist/lenis.css';
@@ -64,31 +60,22 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+/**
+ * The document itself — fonts, colour scheme, skip link — and nothing else.
+ * The public site's chrome lives in app/(site)/layout.tsx and the staff console's
+ * in app/admin/layout.tsx, so neither half ships the other's JavaScript.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" className={`${sans.variable} ${mono.variable} ${display.variable}`}>
       <body>
-        {/* the boot screen waits on JavaScript that will never run */}
-        <noscript>
-          <style>{'[data-boot]{display:none!important}'}</style>
-        </noscript>
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[120] focus:bg-lamp focus:px-4 focus:py-2 focus:text-lamp-ink"
         >
           Skip to content
         </a>
-        <BootLoader />
-        <SiteChrome />
-        <TrailerModal />
-        <main id="main" className="relative z-10">
-          {children}
-        </main>
-        <script
-          type="application/ld+json"
-          // local static content only, never visitor input
-          dangerouslySetInnerHTML={{ __html: jsonLd(localBusinessSchema()) }}
-        />
+        {children}
       </body>
     </html>
   );

@@ -12,6 +12,15 @@ const nextConfig = {
         headers: [assetCache],
       })),
       {
+        // the staff console is never a search result and is never held in a shared
+        // cache: it is behind a login and every page of it is somebody's live data
+        source: '/admin/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
