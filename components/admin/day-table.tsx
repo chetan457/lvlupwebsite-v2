@@ -47,7 +47,13 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
               return (
                 <tr key={row.id} className="border-b border-edge last:border-0 align-middle">
                   <Td className="font-mono text-paper">{row.station_name}</Td>
-                  <Td className="text-paper">{row.guest_name || 'Walk-in'}</Td>
+                  <Td className="text-paper">
+                    {row.guest_name || 'Walk-in'}
+                    {/* the number sits under the name rather than taking a column a phone cannot spare */}
+                    {row.guest_phone ? (
+                      <span className="block font-mono text-[0.72rem] text-dimmer">{row.guest_phone}</span>
+                    ) : null}
+                  </Td>
                   <Td align="right" className="font-mono text-dim tabular-nums">
                     {clockTime(row.started_at)}
                   </Td>

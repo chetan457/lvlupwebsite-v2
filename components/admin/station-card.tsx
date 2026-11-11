@@ -30,15 +30,17 @@ export function StationCard({ station, now }: Props) {
   const [billing, setBilling] = useState(false);
   const [guest, setGuest] = useState('');
   const [players, setPlayers] = useState('1');
+  const [phone, setPhone] = useState('');
 
   const onStart = () => {
     setError(null);
     run(async () => {
-      const result = await startSession(station.id, guest, Number.parseInt(players, 10) || 1);
+      const result = await startSession(station.id, guest, Number.parseInt(players, 10) || 1, phone);
       setError(result.error);
       if (!result.error) {
         setGuest('');
         setPlayers('1');
+        setPhone('');
       }
     });
   };
@@ -165,6 +167,20 @@ export function StationCard({ station, now }: Props) {
                 />
               </label>
             </div>
+            <label className="grid gap-1">
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dimmer">
+                Phone <span className="normal-case tracking-normal text-dimmer">(optional)</span>
+              </span>
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Skip if they would rather not"
+                className="min-h-11 border border-edge-hi bg-room px-2 text-[0.95rem] text-paper placeholder:text-dimmer"
+              />
+            </label>
             <button
               type="submit"
               disabled={pending}

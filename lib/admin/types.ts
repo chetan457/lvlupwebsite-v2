@@ -33,6 +33,8 @@ export type PlaySession = {
   id: string;
   station_id: string;
   guest_name: string;
+  /** Optional: a walk-in who would rather not give a number still gets a timer. */
+  guest_phone: string | null;
   players: number;
   started_at: string;
   ended_at: string | null;

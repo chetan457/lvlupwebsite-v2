@@ -31,6 +31,7 @@ function explain(message: string): string {
   if (/has not happened yet/i.test(message)) return 'That day has not happened yet.';
   if (/nothing was played/i.test(message)) return 'Nothing was played on that day, so there is nothing to close.';
   if (/station not available/i.test(message)) return 'That station is retired.';
+  if (/phone number does not look right/i.test(message)) return 'Check the phone number, or leave it blank.';
   return GENERIC;
 }
 
@@ -40,7 +41,12 @@ async function guard() {
   return { staff, error: null };
 }
 
-export async function startSession(stationId: string, guestName: string, players: number): Promise<Result> {
+export async function startSession(
+  stationId: string,
+  guestName: string,
+  players: number,
+  phone = '',
+): Promise<Result> {
   const { error: denied } = await guard();
   if (denied) return { error: denied };
 
@@ -50,6 +56,8 @@ export async function startSession(stationId: string, guestName: string, players
     // capped: a guest name is written on a card by a busy person, not pasted
     p_guest: guestName.trim().slice(0, 80) || null,
     p_players: Number.isFinite(players) ? Math.max(1, Math.min(50, Math.trunc(players))) : 1,
+    // never required: the database normalises it and rejects only obvious nonsense
+    p_phone: phone.trim().slice(0, 24) || null,
   });
 
   revalidatePath('/admin');
