@@ -1,17 +1,22 @@
 /**
  * The billing rules, for display only.
  *
- * The database owns the real numbers (billed_minutes / session_amount in
- * supabase/migrations/0001_init.sql). These mirror them so a running session
- * can show what it has cost so far without a round trip. If one changes, change
- * both: the SQL is what a guest actually pays.
+ * The database owns the real numbers (billed_minutes / session_amount, now in
+ * supabase/migrations/0003_per_minute_billing.sql). These mirror them so a
+ * running session can show what it has cost so far without a round trip. If one
+ * changes, change both: the SQL is what a guest actually pays.
  */
 
-/** First half hour is the minimum charge; after that, time rounds up in 15-minute blocks. */
+/**
+ * The time on the timer, in whole minutes.
+ *
+ * Any started minute counts in full: a till cannot settle in fractions, and a
+ * clock that bills by the second starts arguments over ten rupees. So 61
+ * seconds is 2 minutes, and there is no minimum beyond the first one.
+ */
 export function billedMinutes(startedAt: string | Date, now: number = Date.now()): number {
   const started = typeof startedAt === 'string' ? Date.parse(startedAt) : startedAt.getTime();
-  const minutes = Math.ceil(Math.max(0, now - started) / 60000);
-  return Math.max(30, Math.ceil(minutes / 15) * 15);
+  return Math.max(1, Math.ceil(Math.max(0, now - started) / 60000));
 }
 
 export function sessionAmount(ratePerHour: number, minutes: number): number {

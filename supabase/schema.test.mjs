@@ -66,6 +66,12 @@ await db.exec(`
 const migration = readFileSync(join(ROOT, 'supabase/migrations/0001_init.sql'), 'utf8')
   .replace(/create extension if not exists "pgcrypto" with schema extensions;/, '');
 
+/* Everything after the first migration, applied in order — otherwise this suite
+   would keep testing a schema the live project has already moved past. */
+const laterMigrations = ['0002_guest_phone.sql', '0003_per_minute_billing.sql']
+  .map((name) => readFileSync(join(ROOT, 'supabase/migrations', name), 'utf8'))
+  .join('\n');
+
 console.log('\n— schema —');
 try {
   await db.exec(migration);
@@ -81,6 +87,13 @@ try {
   ok('migration is re-runnable', true);
 } catch (error) {
   ok('migration is re-runnable', false, String(error.message));
+}
+
+try {
+  await db.exec(laterMigrations);
+  ok('later migrations apply', true);
+} catch (error) {
+  ok('later migrations apply', false, String(error.message));
 }
 
 try {
@@ -100,7 +113,7 @@ await db.exec(`
 
 // ---- billing ------------------------------------------------------------
 console.log('\n— billing rules —');
-for (const [seconds, expected] of [[0, 30], [1, 30], [1799, 30], [1800, 30], [1801, 45], [2700, 45], [2701, 60], [3600, 60]]) {
+for (const [seconds, expected] of [[0, 1], [1, 1], [59, 1], [61, 2], [1800, 30], [1801, 31], [3600, 60], [3660, 61]]) {
   const row = await one(
     `select public.billed_minutes(now() - interval '${seconds} seconds', now()) as m`,
   );
@@ -125,15 +138,29 @@ await raises('a second start on the same station is refused',
   () => db.exec(`select public.start_session('${bay.id}', 'Someone', 1)`), /already in play/i);
 
 const stopped = await one(`select * from public.stop_session('${started.id}', 'upi')`);
-ok('stop bills the 30-minute minimum', stopped.amount === 60 && stopped.billed_minutes === 30,
+// started a moment ago, so one minute at ₹120/hr
+ok('stop bills the time on the timer', stopped.amount === 2 && stopped.billed_minutes === 1,
   `${stopped.amount} / ${stopped.billed_minutes}`);
 ok('stop records the payment method', stopped.payment_method === 'upi');
 
 const again = await one(`select * from public.stop_session('${started.id}', 'cash')`);
-ok('stopping twice does not re-bill', again.amount === 60 && again.payment_method === 'upi',
+ok('stopping twice does not re-bill', again.amount === 2 && again.payment_method === 'upi',
   `${again.amount} / ${again.payment_method}`);
 const stopAudits = await one(`select count(*)::int as c from public.audit_log where action = 'session.stop'`);
 ok('the second stop writes no second audit row', stopAudits.c === 1, `got ${stopAudits.c}`);
+
+// ---- the optional phone -------------------------------------------------
+console.log('\n— guest phone —');
+const bay2 = await one(`select id from public.stations where name = 'Bay 02'`);
+const withPhone = await one(`select * from public.start_session('${bay2.id}', 'Messy', 1, null, '+91 (98250) 12-345')`);
+ok('a messy number is stored as digits', withPhone.guest_phone === '+919825012345', String(withPhone.guest_phone));
+await db.exec(`select public.stop_session('${withPhone.id}', 'cash')`);
+await raises('nonsense is refused',
+  () => db.exec(`select public.start_session('${bay2.id}', 'Bad', 1, null, '12')`), /does not look right/i);
+const noPhone = await one(`select * from public.start_session('${bay2.id}', 'No number', 1)`);
+ok('no number is fine', noPhone.guest_phone === null, String(noPhone.guest_phone));
+await db.exec(`select public.stop_session('${noPhone.id}', 'cash')`);
+await db.exec(`delete from public.play_sessions where guest_name in ('Messy', 'No number')`);
 
 // ---- constraints --------------------------------------------------------
 console.log('\n— constraints —');
@@ -166,8 +193,8 @@ await raises('a staff account cannot close the day',
 
 await act(MANAGER);
 const closure = await one(`select * from public.close_day('${today}')`);
-// Bay 01 at 120/hr and Rig 01 at 200/hr, both on the 30-minute minimum: 60 + 100
-ok('close_day stores the takings', closure.totals.total === 160 && closure.totals.cash === 100 && closure.totals.upi === 60,
+// Bay 01 at ₹120/hr and Rig 01 at ₹200/hr, a minute each: ₹2 + ₹3 (200/60 rounds to 3)
+ok('close_day stores the takings', closure.totals.total === 5 && closure.totals.cash === 3 && closure.totals.upi === 2,
   JSON.stringify(closure.totals));
 
 // ---- a closed day is frozen ---------------------------------------------

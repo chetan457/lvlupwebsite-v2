@@ -358,8 +358,8 @@
               <h4>Billing rules</h4>
               <p>One place, applied to every station and shown on the guest's running total:</p>
               <ul class="tight">
-                <li>First 30 minutes are the minimum charge.</li>
-                <li>After that, time rounds up in 15-minute blocks.</li>
+                <li>The bill is the rate spread over the minutes actually played.</li>
+                <li>Any started minute counts in full, so 61 seconds is two minutes.</li>
                 <li>The rate is copied onto the session at start, so a later price change never rewrites yesterday.</li>
                 <li>Happy-hour and weekend rates attach to a station kind and a time window.</li>
               </ul>
@@ -498,7 +498,7 @@
         <li>The owner ID and password you want (send privately — I will store only a hash).</li>
         <li>Whether your Hostinger plan includes a database, or I should use a free hosted Postgres.</li>
         <li>The real station list for Nadiad Nexus-I: how many PS5 bays, is there a VR setup and a racing rig, how many seats each.</li>
-        <li>The real rate card per station kind, and whether a minimum charge applies.</li>
+        <li>The real rate card per station kind.</li>
         <li>How many staff will have their own login.</li>
         <li>Whether you want GST on the bill, and the GSTIN if so.</li>
       </ul>
@@ -561,9 +561,7 @@
 
   /* ---------- billing ---------- */
   function billedMinutes(ms) {
-    var mins = Math.max(1, Math.ceil(ms / 60000));
-    if (mins <= 30) return 30;
-    return Math.ceil(mins / 15) * 15;
+    return Math.max(1, Math.ceil(ms / 60000));
   }
   function amountFor(rate, ms) {
     return Math.round(rate * billedMinutes(ms) / 60);

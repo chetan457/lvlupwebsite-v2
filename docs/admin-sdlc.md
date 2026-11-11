@@ -64,9 +64,9 @@ real gate is `currentStaff()` in the layout and pages.
 price must never rewrite what a guest was charged last Tuesday, and a day sheet
 has to keep adding up months later.
 
-**Billing rule in one place.** First 30 minutes are the minimum charge; after
-that time rounds up in 15-minute blocks; the amount is the rate pro-rated over
-those minutes. It is defined in SQL (`billed_minutes`, `session_amount`) and
+**Billing rule in one place.** The amount is the station's rate spread over the
+minutes actually played, with any started minute counted in full (61 seconds is
+two minutes). There is no minimum charge: the bill tracks the timer. It is defined in SQL (`billed_minutes`, `session_amount`) and
 mirrored in `lib/admin/billing.ts` purely so a running total can be displayed
 without a round trip. The SQL is what a guest pays; if one changes, change both.
 
@@ -115,11 +115,11 @@ seed (a PS5 bay at ₹120 per hour); substitute the real rate once it is loaded.
 4. **See it on a second device.** Sign in on the phone and open the floor
    **without** refreshing after step 3. The same station shows as in play, with
    the same elapsed time to within a second or two.
-5. **Stop before 30 minutes.** After about 10 minutes, press Stop and choose
-   cash. Billed time shows **30 minutes** and the amount is **₹60** — the
-   minimum charge, not 10 minutes pro-rated.
+5. **Stop after a few minutes.** Press Stop and choose cash. Billed time and
+   amount match the timer: ten minutes on a ₹120/hr bay is **₹20**, not a
+   half-hour minimum.
 6. **Stop after a part block.** Start another session, stop it after about 37
-   minutes. Billed time shows **45 minutes** (rounded up to the next 15-minute
+   minutes. Billed time follows the clock to the minute.
    block) and the amount is **₹90**.
 7. **Stop is idempotent.** Press Stop again on a session already closed. The
    amount does not change and no second row appears on the day sheet.

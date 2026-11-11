@@ -72,8 +72,8 @@ export default async function StationsPage() {
       <section className="border border-edge bg-surface-hi/40 p-4 sm:p-5">
         <h2 className="eyebrow text-accent">How a session is billed</h2>
         <ul className="mt-3 space-y-2 text-sm text-dim">
-          <li>The first 30 minutes are the minimum charge, however short the session.</li>
-          <li>After that, time rounds up in 15-minute blocks.</li>
+          <li>The bill is the rate spread over the minutes actually played.</li>
+          <li>Any started minute counts in full, so 61 seconds is two minutes.</li>
           <li>
             The rate is copied onto the session when play starts, so changing a rate here never rewrites a
             bill that has already been taken.
