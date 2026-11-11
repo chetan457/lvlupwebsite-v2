@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 
 import { startSession, stopSession } from '@/lib/admin/actions';
-import { clockTime, elapsed, rupees, runningAmount } from '@/lib/admin/billing';
+import { clockTime, elapsed, rupees, runningAmount, settlement } from '@/lib/admin/billing';
 import type { FloorStation, PaymentMethod } from '@/lib/admin/types';
 
 type Props = {
@@ -116,13 +116,31 @@ export function StationCard({ station, now }: Props) {
                     min={0}
                     step={10}
                     value={settled}
-                    /* selected on focus: the box arrives prefilled, and a thumb
-                       typing a new figure must replace it, not append to it */
+                    /* selected on every tap, not just the first: the box arrives
+                       prefilled, and a till amount is retyped whole, never edited
+                       digit by digit — appending to the quote is how ₹100 becomes ₹2100 */
                     onFocus={(event) => event.target.select()}
+                    onClick={(event) => event.currentTarget.select()}
                     onChange={(event) => setSettled(event.target.value)}
                     className="min-h-11 border border-edge-hi bg-room px-2 font-mono text-[1.05rem] tabular-nums text-paper"
                   />
                 </label>
+                {/* the size of the gap as it is typed, so nobody discounts 40% meaning to round down */}
+                {(() => {
+                  const typed = settled.trim();
+                  if (typed === '' || Number.isNaN(Number(typed))) return null;
+                  const gap = settlement(quoted, Number(typed));
+                  if (gap.kind === 'exact') return null;
+                  return (
+                    <p
+                      aria-live="polite"
+                      className={`font-mono text-[0.72rem] ${gap.kind === 'discount' ? 'text-alarm' : 'text-live'}`}
+                    >
+                      {gap.label} ({gap.difference < 0 ? '−' : '+'}
+                      {rupees(Math.abs(gap.difference))})
+                    </p>
+                  );
+                })()}
                 <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dimmer">Paid by</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button

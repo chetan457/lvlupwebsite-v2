@@ -28,6 +28,34 @@ export function runningAmount(ratePerHour: number, startedAt: string, now: numbe
   return sessionAmount(ratePerHour, billedMinutes(startedAt, now));
 }
 
+/**
+ * How a settled bill differs from the figure the clock worked out.
+ *
+ * Derived rather than stored: the two amounts are the facts, and a label that
+ * can disagree with them is worse than no label. A quote of zero has no
+ * meaningful percentage, so it reports none.
+ */
+export type Settlement = {
+  kind: 'exact' | 'discount' | 'extra';
+  /** Signed whole percent against the quote, or null when the quote was zero. */
+  percent: number | null;
+  difference: number;
+  label: string;
+};
+
+export function settlement(quoted: number | null | undefined, settled: number | null | undefined): Settlement {
+  const q = quoted ?? 0;
+  const s = settled ?? 0;
+  const difference = s - q;
+  if (difference === 0) return { kind: 'exact', percent: 0, difference: 0, label: 'As the clock' };
+
+  const percent = q === 0 ? null : Math.round((difference / q) * 100);
+  const kind = difference < 0 ? 'discount' : 'extra';
+  const sign = difference < 0 ? '−' : '+';
+  const size = percent === null ? rupees(Math.abs(difference)) : `${Math.abs(percent)}%`;
+  return { kind, percent, difference, label: `${sign}${size} ${kind}` };
+}
+
 export function rupees(amount: number | null | undefined): string {
   return `₹${Math.round(amount ?? 0).toLocaleString('en-IN')}`;
 }

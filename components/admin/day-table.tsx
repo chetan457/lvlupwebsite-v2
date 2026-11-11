@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { clockTime, rupees } from '@/lib/admin/billing';
+import { clockTime, rupees, settlement } from '@/lib/admin/billing';
 import type { DaySession } from '@/lib/admin/queries';
 
 /**
@@ -17,8 +17,60 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 export function DayTable({ sessions, total }: { sessions: DaySession[]; total: number }) {
   return (
-    /* the table, not the page, is what scrolls sideways on a phone */
-    <div className="overflow-x-auto border border-edge bg-surface">
+    <>
+      {/* A phone gets a list, not a table. Seven columns on a 420px screen puts
+          the amount — the one figure anyone opens this page for — off the right
+          edge behind a sideways scroll nobody discovers mid-shift. */}
+      <div className="grid gap-px border border-edge bg-edge md:hidden">
+        {sessions.length === 0 ? (
+          <p className="bg-surface px-4 py-8 text-center text-dim">Nothing played on this day yet.</p>
+        ) : (
+          sessions.map((row) => {
+            const live = !row.ended_at;
+            const gap =
+              row.quoted_amount != null && row.quoted_amount !== row.amount
+                ? settlement(row.quoted_amount, row.amount)
+                : null;
+            return (
+              <article key={row.id} className="grid gap-1 bg-surface px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-mono text-paper">{row.station_name}</span>
+                  <span className="font-mono text-[1.05rem] tabular-nums text-paper">
+                    {live ? <span className="text-live">In play</span> : rupees(row.amount)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 text-[0.85rem] text-dim">
+                  <span>
+                    {row.guest_name || 'Walk-in'}
+                    {row.guest_phone ? (
+                      <span className="block font-mono text-[0.72rem] text-dimmer">{row.guest_phone}</span>
+                    ) : null}
+                  </span>
+                  <span className="text-right font-mono text-[0.75rem] text-dimmer">
+                    {clockTime(row.started_at)}
+                    {live ? null : ` – ${clockTime(row.ended_at as string)}`}
+                    <span className="block">
+                      {live ? '—' : `${row.billed_minutes ?? 0} min · ${PAYMENT_LABEL[row.payment_method ?? 'pending'] ?? 'Pending'}`}
+                    </span>
+                  </span>
+                </div>
+                {gap ? (
+                  <p className={`font-mono text-[0.72rem] ${gap.kind === 'discount' ? 'text-alarm' : 'text-live'}`}>
+                    {rupees(row.quoted_amount)} on the clock · {gap.label}
+                  </p>
+                ) : null}
+              </article>
+            );
+          })
+        )}
+        <p className="flex items-baseline justify-between bg-surface-hi/50 px-4 py-3 font-mono text-sm">
+          <span className="text-[0.7rem] uppercase tracking-[0.14em] text-dimmer">Total</span>
+          <span className="tabular-nums text-paper">{rupees(total)}</span>
+        </p>
+      </div>
+
+    {/* the table, not the page, is what scrolls sideways from tablet width up */}
+    <div className="hidden overflow-x-auto border border-edge bg-surface md:block">
       <table className="w-full min-w-[46rem] border-collapse text-sm">
         <caption className="sr-only">Sessions played on this day, newest first</caption>
         <thead>
@@ -76,12 +128,19 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                     ) : (
                       <>
                         {rupees(row.amount)}
-                        {/* settled off the clock: show what the rule said, so the gap is on the record */}
-                        {row.quoted_amount != null && row.quoted_amount !== row.amount ? (
-                          <span className="block text-[0.72rem] text-dimmer">
-                            was {rupees(row.quoted_amount)}
-                          </span>
-                        ) : null}
+                        {/* settled off the clock: the rule's figure and the size of the gap, on the record */}
+                        {row.quoted_amount != null && row.quoted_amount !== row.amount
+                          ? (() => {
+                              const gap = settlement(row.quoted_amount, row.amount);
+                              return (
+                                <span
+                                  className={`block text-[0.72rem] ${gap.kind === 'discount' ? 'text-alarm' : 'text-live'}`}
+                                >
+                                  {rupees(row.quoted_amount)} · {gap.label}
+                                </span>
+                              );
+                            })()
+                          : null}
                       </>
                     )}
                   </Td>
@@ -102,6 +161,7 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
         </tfoot>
       </table>
     </div>
+    </>
   );
 }
 
