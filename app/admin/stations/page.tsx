@@ -74,6 +74,7 @@ export default async function StationsPage() {
         <ul className="mt-3 space-y-2 text-sm text-dim">
           <li>The bill is the rate spread over the minutes actually played.</li>
           <li>Any started minute counts in full, so 61 seconds is two minutes.</li>
+          <li>At billing, the amount can be changed to whatever was actually taken; both figures are kept.</li>
           <li>
             The rate is copied onto the session when play starts, so changing a rate here never rewrites a
             bill that has already been taken.

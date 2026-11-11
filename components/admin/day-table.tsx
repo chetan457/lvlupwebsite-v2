@@ -71,7 +71,19 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                     {live ? '—' : PAYMENT_LABEL[row.payment_method ?? 'pending'] ?? 'Pending'}
                   </Td>
                   <Td align="right" className="font-mono text-paper tabular-nums">
-                    {live ? <span className="text-live">In play</span> : rupees(row.amount)}
+                    {live ? (
+                      <span className="text-live">In play</span>
+                    ) : (
+                      <>
+                        {rupees(row.amount)}
+                        {/* settled off the clock: show what the rule said, so the gap is on the record */}
+                        {row.quoted_amount != null && row.quoted_amount !== row.amount ? (
+                          <span className="block text-[0.72rem] text-dimmer">
+                            was {rupees(row.quoted_amount)}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </Td>
                 </tr>
               );

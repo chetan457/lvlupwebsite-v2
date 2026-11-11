@@ -68,7 +68,7 @@ const migration = readFileSync(join(ROOT, 'supabase/migrations/0001_init.sql'), 
 
 /* Everything after the first migration, applied in order — otherwise this suite
    would keep testing a schema the live project has already moved past. */
-const laterMigrations = ['0002_guest_phone.sql', '0003_per_minute_billing.sql']
+const laterMigrations = ['0002_guest_phone.sql', '0003_per_minute_billing.sql', '0004_settled_amount.sql']
   .map((name) => readFileSync(join(ROOT, 'supabase/migrations', name), 'utf8'))
   .join('\n');
 
@@ -161,6 +161,32 @@ const noPhone = await one(`select * from public.start_session('${bay2.id}', 'No 
 ok('no number is fine', noPhone.guest_phone === null, String(noPhone.guest_phone));
 await db.exec(`select public.stop_session('${noPhone.id}', 'cash')`);
 await db.exec(`delete from public.play_sessions where guest_name in ('Messy', 'No number')`);
+
+// ---- settling at a different figure --------------------------------------
+console.log('\n— settling off the clock —');
+const bay3 = await one(`select id from public.stations where name = 'Bay 03'`);
+const toSettle = await one(`select * from public.start_session('${bay3.id}', 'Regular', 2)`);
+const settled = await one(`select * from public.stop_session('${toSettle.id}', 'cash', 100)`);
+ok('the settled amount is what was taken', settled.amount === 100, String(settled.amount));
+ok('the clock figure is kept beside it', settled.quoted_amount === 2, String(settled.quoted_amount));
+const settleAudit = await one(`select detail from public.audit_log order by id desc limit 1`);
+ok('the gap is written to the audit log', settleAudit.detail.settled_off_quote === 98, JSON.stringify(settleAudit.detail));
+
+const plain = await one(`select * from public.start_session('${bay3.id}', 'Plain', 1)`);
+const plainStop = await one(`select * from public.stop_session('${plain.id}', 'upi')`);
+ok('no override bills the clock figure', plainStop.amount === plainStop.quoted_amount, `${plainStop.amount} / ${plainStop.quoted_amount}`);
+
+const free = await one(`select * from public.start_session('${bay3.id}', 'On the house', 1)`);
+const freeStop = await one(`select * from public.stop_session('${free.id}', 'cash', 0)`);
+ok('a session can be settled at zero', freeStop.amount === 0, String(freeStop.amount));
+
+const slip = await one(`select * from public.start_session('${bay3.id}', 'Fat finger', 1)`);
+await raises('an absurd amount is refused',
+  () => db.exec(`select public.stop_session('${slip.id}', 'cash', 999999)`), /looks wrong/i);
+await raises('a negative bill is refused',
+  () => db.exec(`select public.stop_session('${slip.id}', 'cash', -50)`), /cannot be negative/i);
+await db.exec(`select public.stop_session('${slip.id}', 'cash')`);
+await db.exec(`delete from public.play_sessions where guest_name in ('Regular', 'Plain', 'On the house', 'Fat finger')`);
 
 // ---- constraints --------------------------------------------------------
 console.log('\n— constraints —');

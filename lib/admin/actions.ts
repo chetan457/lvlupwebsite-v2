@@ -32,6 +32,8 @@ function explain(message: string): string {
   if (/nothing was played/i.test(message)) return 'Nothing was played on that day, so there is nothing to close.';
   if (/station not available/i.test(message)) return 'That station is retired.';
   if (/phone number does not look right/i.test(message)) return 'Check the phone number, or leave it blank.';
+  if (/amount looks wrong/i.test(message)) return 'That amount looks wrong. Check it and try again.';
+  if (/bill cannot be negative/i.test(message)) return 'A bill cannot be negative.';
   return GENERIC;
 }
 
@@ -65,12 +67,31 @@ export async function startSession(
   return { error: error ? explain(error.message) : null };
 }
 
-export async function stopSession(sessionId: string, payment: PaymentMethod): Promise<Result> {
+/**
+ * `settledAmount` is what the guest actually paid, when that differs from what
+ * the timer worked out — a regular, a goodwill rounding, a frozen screen. Leave
+ * it undefined to charge the quoted figure. Both are stored.
+ */
+export async function stopSession(
+  sessionId: string,
+  payment: PaymentMethod,
+  settledAmount?: number,
+): Promise<Result> {
   const { error: denied } = await guard();
   if (denied) return { error: denied };
 
+  let amount: number | null = null;
+  if (settledAmount !== undefined) {
+    if (!Number.isFinite(settledAmount) || settledAmount < 0) return { error: 'Enter the amount taken, or leave it as it is.' };
+    amount = Math.round(settledAmount);
+  }
+
   const supabase = await supabaseServer();
-  const { error } = await supabase.rpc('stop_session', { p_session: sessionId, p_payment: payment });
+  const { error } = await supabase.rpc('stop_session', {
+    p_session: sessionId,
+    p_payment: payment,
+    p_amount: amount,
+  });
 
   revalidatePath('/admin');
   revalidatePath('/admin/day');

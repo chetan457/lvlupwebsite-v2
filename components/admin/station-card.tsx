@@ -25,9 +25,12 @@ type Props = {
  */
 export function StationCard({ station, now }: Props) {
   const session = station.open_session;
+  /** What the clock says this session has run up, right now. */
+  const quoted = session ? runningAmount(session.rate_snapshot ?? station.rate_per_hour, session.started_at, now) : 0;
   const [pending, run] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [billing, setBilling] = useState(false);
+  const [settled, setSettled] = useState('');
   const [guest, setGuest] = useState('');
   const [players, setPlayers] = useState('1');
   const [phone, setPhone] = useState('');
@@ -48,10 +51,16 @@ export function StationCard({ station, now }: Props) {
   const onStop = (payment: PaymentMethod) => {
     if (!session) return;
     setError(null);
+    // an untouched box bills the quoted figure; a changed one bills what was taken
+    const typed = settled.trim();
+    const override = typed === '' || Number(typed) === quoted ? undefined : Number(typed);
     run(async () => {
-      const result = await stopSession(session.id, payment);
+      const result = await stopSession(session.id, payment, override);
       setError(result.error);
-      if (!result.error) setBilling(false);
+      if (!result.error) {
+        setBilling(false);
+        setSettled('');
+      }
     });
   };
 
@@ -82,7 +91,7 @@ export function StationCard({ station, now }: Props) {
               </p>
               <p className="font-mono text-xl leading-none tabular-nums text-paper">
                 {/* the snapshot, not the station: a rate change mid-session must not change the bill */}
-                {rupees(runningAmount(session.rate_snapshot ?? station.rate_per_hour, session.started_at, now))}
+                {rupees(quoted)}
               </p>
             </div>
 
@@ -96,6 +105,24 @@ export function StationCard({ station, now }: Props) {
 
             {billing ? (
               <div className="grid gap-2">
+                <label className="grid gap-1">
+                  <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dimmer">
+                    Amount taken{' '}
+                    <span className="normal-case tracking-normal text-dimmer">(₹{quoted} on the clock)</span>
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={10}
+                    value={settled}
+                    /* selected on focus: the box arrives prefilled, and a thumb
+                       typing a new figure must replace it, not append to it */
+                    onFocus={(event) => event.target.select()}
+                    onChange={(event) => setSettled(event.target.value)}
+                    className="min-h-11 border border-edge-hi bg-room px-2 font-mono text-[1.05rem] tabular-nums text-paper"
+                  />
+                </label>
                 <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dimmer">Paid by</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -118,7 +145,10 @@ export function StationCard({ station, now }: Props) {
                 <button
                   type="button"
                   disabled={pending}
-                  onClick={() => setBilling(false)}
+                  onClick={() => {
+                    setBilling(false);
+                    setSettled('');
+                  }}
                   className="min-h-11 text-left font-mono text-[0.72rem] uppercase tracking-[0.12em] text-dim transition-colors hover:text-paper disabled:opacity-50"
                 >
                   Keep playing
@@ -128,7 +158,11 @@ export function StationCard({ station, now }: Props) {
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => setBilling(true)}
+                onClick={() => {
+                  // prefilled with the quoted figure: most bills are taken as they stand
+                  setSettled(String(quoted));
+                  setBilling(true);
+                }}
                 className="min-h-11 w-full border border-edge-hi bg-surface-hi px-3 font-mono text-[0.8rem] uppercase tracking-[0.12em] text-paper transition-colors hover:border-live disabled:opacity-50"
               >
                 Stop &amp; bill

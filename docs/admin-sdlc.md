@@ -66,7 +66,14 @@ has to keep adding up months later.
 
 **Billing rule in one place.** The amount is the station's rate spread over the
 minutes actually played, with any started minute counted in full (61 seconds is
-two minutes). There is no minimum charge: the bill tracks the timer. It is defined in SQL (`billed_minutes`, `session_amount`) and
+two minutes). There is no minimum charge: the bill tracks the timer.
+
+**The clock proposes, the counter decides.** At billing, staff can settle at a
+different figure — a regular, a goodwill rounding, a half-hour the screen froze
+for. Both numbers are kept: `quoted_amount` is what the rule said, `amount` is
+what was taken, the gap shows on the day sheet and the audit log records it with
+a name attached. A figure more than ten times the quote (floor ₹2,000) is
+refused as a stray digit. It is defined in SQL (`billed_minutes`, `session_amount`) and
 mirrored in `lib/admin/billing.ts` purely so a running total can be displayed
 without a round trip. The SQL is what a guest pays; if one changes, change both.
 

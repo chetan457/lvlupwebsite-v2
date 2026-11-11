@@ -40,6 +40,8 @@ export type PlaySession = {
   ended_at: string | null;
   rate_snapshot: number;
   billed_minutes: number | null;
+  /** What the rule worked out, kept even when the counter settled at something else. */
+  quoted_amount: number | null;
   amount: number | null;
   payment_method: PaymentMethod | null;
   note: string | null;
