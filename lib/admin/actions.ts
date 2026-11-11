@@ -205,6 +205,48 @@ function validDay(day: string): boolean {
 }
 
 /** The day must be named by the caller: after midnight, "today" is no longer the shift being closed. */
+/**
+ * Set what an hour costs at a given head count. Tiers are rows rather than
+ * arithmetic because a lounge charges the second head differently from the
+ * fourth; the highest tier at or below a group's size is the one that bills.
+ */
+export async function setRateTier(stationId: string, players: number, ratePerHour: number): Promise<Result> {
+  const { staff, error: denied } = await guard();
+  if (denied || !staff) return { error: denied ?? GENERIC };
+  if (staff.role === 'staff') return { error: 'Only a manager or owner can change a rate.' };
+
+  const heads = Math.trunc(players);
+  const rate = Math.trunc(ratePerHour);
+  if (!Number.isFinite(heads) || heads < 1 || heads > 50) return { error: 'Players must be between 1 and 50.' };
+  if (!Number.isFinite(rate) || rate < 1) return { error: 'Set a rate per hour above zero.' };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from('station_rates')
+    .upsert({ station_id: stationId, players: heads, rate_per_hour: rate }, { onConflict: 'station_id,players' });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/stations');
+  return { error: error ? GENERIC : null };
+}
+
+export async function removeRateTier(stationId: string, players: number): Promise<Result> {
+  const { staff, error: denied } = await guard();
+  if (denied || !staff) return { error: denied ?? GENERIC };
+  if (staff.role === 'staff') return { error: 'Only a manager or owner can change a rate.' };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from('station_rates')
+    .delete()
+    .eq('station_id', stationId)
+    .eq('players', Math.trunc(players));
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/stations');
+  return { error: error ? GENERIC : null };
+}
+
 export async function closeDay(day: string): Promise<Result> {
   const { error: denied } = await guard();
   if (denied) return { error: denied };

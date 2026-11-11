@@ -3,7 +3,7 @@ import 'server-only';
 import { supabaseConfigured, supabaseServer } from '@/lib/supabase/server';
 
 import { businessDay } from './billing';
-import type { DayClosure, DayTotals, FloorStation, PlaySession, Staff, StationKind } from './types';
+import type { DayClosure, DayTotals, FloorStation, PlaySession, RateTier, Staff, StationKind } from './types';
 
 /**
  * A failed read is raised, not swallowed.
@@ -42,7 +42,7 @@ export async function getFloor(): Promise<FloorStation[]> {
   const [stationRows, openRows] = await Promise.all([
     supabase
       .from('stations')
-      .select('*, station_kinds(label)')
+      .select('*, station_kinds(label), station_rates(players, rate_per_hour)')
       .eq('active', true)
       // name breaks ties: equal sort values let Postgres reorder the grid between
       // refreshes, and a card must never move under a thumb on its way down
@@ -56,10 +56,14 @@ export async function getFloor(): Promise<FloorStation[]> {
   const live = new Map((open ?? []).map((row) => [row.station_id as string, row as PlaySession]));
 
   return (stations ?? []).map((row) => {
-    const { station_kinds: kind, ...station } = row as typeof row & { station_kinds: { label: string } | null };
+    const { station_kinds: kind, station_rates: rates, ...station } = row as typeof row & {
+      station_kinds: { label: string } | null;
+      station_rates: RateTier[] | null;
+    };
     return {
-      ...(station as Omit<FloorStation, 'kind_label' | 'open_session'>),
+      ...(station as Omit<FloorStation, 'kind_label' | 'rates' | 'open_session'>),
       kind_label: kind?.label ?? station.kind_id,
+      rates: [...(rates ?? [])].sort((a, b) => a.players - b.players),
       open_session: live.get(station.id) ?? null,
     };
   });
@@ -76,12 +80,19 @@ export async function getAllStations() {
   const supabase = await supabaseServer();
   const result = await supabase
     .from('stations')
-    .select('*, station_kinds(label)')
+    .select('*, station_kinds(label), station_rates(players, rate_per_hour)')
     .order('sort', { ascending: true })
     .order('name', { ascending: true });
   return (unwrap(result, 'the stations') ?? []).map((row) => {
-    const { station_kinds: kind, ...station } = row as typeof row & { station_kinds: { label: string } | null };
-    return { ...station, kind_label: kind?.label ?? station.kind_id } as FloorStation;
+    const { station_kinds: kind, station_rates: rates, ...station } = row as typeof row & {
+      station_kinds: { label: string } | null;
+      station_rates: RateTier[] | null;
+    };
+    return {
+      ...station,
+      kind_label: kind?.label ?? station.kind_id,
+      rates: [...(rates ?? [])].sort((a, b) => a.players - b.players),
+    } as FloorStation;
   });
 }
 

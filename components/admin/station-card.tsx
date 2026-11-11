@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 
 import { startSession, stopSession } from '@/lib/admin/actions';
-import { clockTime, elapsed, rupees, runningAmount, settlement } from '@/lib/admin/billing';
+import { clockTime, elapsed, rateFor, rupees, runningAmount, settlement } from '@/lib/admin/billing';
 import type { FloorStation, PaymentMethod } from '@/lib/admin/types';
 
 type Props = {
@@ -34,6 +34,9 @@ export function StationCard({ station, now }: Props) {
   const [guest, setGuest] = useState('');
   const [players, setPlayers] = useState('1');
   const [phone, setPhone] = useState('');
+
+  /** What an hour costs for the head count being typed, before a session exists. */
+  const plannedRate = rateFor(station.rates, station.rate_per_hour, Number.parseInt(players, 10) || 1);
 
   const onStart = () => {
     setError(null);
@@ -74,7 +77,9 @@ export function StationCard({ station, now }: Props) {
         </h2>
         <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-dimmer">
           {station.kind_label} · {station.seats} seat{station.seats === 1 ? '' : 's'} ·{' '}
-          {rupees(station.rate_per_hour)}/hr
+          {station.rates.length > 1
+          ? `${rupees(station.rates[0].rate_per_hour)}–${rupees(station.rates[station.rates.length - 1].rate_per_hour)}/hr`
+          : `${rupees(station.rates[0]?.rate_per_hour ?? station.rate_per_hour)}/hr`}
         </p>
       </header>
 
@@ -213,12 +218,19 @@ export function StationCard({ station, now }: Props) {
                   inputMode="numeric"
                   min={1}
                   max={50}
+                  onFocus={(event) => event.target.select()}
+                  onClick={(event) => event.currentTarget.select()}
                   value={players}
                   onChange={(event) => setPlayers(event.target.value)}
                   className="min-h-11 border border-edge-hi bg-room px-2 text-[0.95rem] tabular-nums text-paper"
                 />
               </label>
             </div>
+            {/* the price follows the head count, so staff see what they are about to charge */}
+            <p className="font-mono text-[0.72rem] text-accent" aria-live="polite">
+              {rupees(plannedRate)}/hr for {Number.parseInt(players, 10) || 1}
+              {station.rates.length ? '' : ' (flat rate)'}
+            </p>
             <label className="grid gap-1">
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dimmer">
                 Phone <span className="normal-case tracking-normal text-dimmer">(optional)</span>

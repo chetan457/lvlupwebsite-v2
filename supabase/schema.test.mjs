@@ -68,7 +68,12 @@ const migration = readFileSync(join(ROOT, 'supabase/migrations/0001_init.sql'), 
 
 /* Everything after the first migration, applied in order — otherwise this suite
    would keep testing a schema the live project has already moved past. */
-const laterMigrations = ['0002_guest_phone.sql', '0003_per_minute_billing.sql', '0004_settled_amount.sql']
+const laterMigrations = [
+  '0002_guest_phone.sql',
+  '0003_per_minute_billing.sql',
+  '0004_settled_amount.sql',
+  '0005_player_rates.sql',
+]
   .map((name) => readFileSync(join(ROOT, 'supabase/migrations', name), 'utf8'))
   .join('\n');
 
@@ -128,7 +133,8 @@ await act(STAFF);
 const bay = await one(`select id, rate_per_hour from public.stations where name = 'Bay 01'`);
 const started = await one(`select * from public.start_session('${bay.id}', 'Dhruv', 2)`);
 ok('start_session opens a session', Boolean(started.id) && started.guest_name === 'Dhruv');
-ok('rate is snapshotted at start', started.rate_snapshot === bay.rate_per_hour, `got ${started.rate_snapshot}`);
+// two players on Bay 01, so the two-player tier, not the station's flat fallback
+ok('rate is snapshotted at start', started.rate_snapshot === 250, `got ${started.rate_snapshot}`);
 
 const audit = await one(`select action, actor_name from public.audit_log order by id desc limit 1`);
 ok('start writes an audit row naming the actor', audit.action === 'session.start' && audit.actor_name === 'Floor staff',
@@ -138,16 +144,35 @@ await raises('a second start on the same station is refused',
   () => db.exec(`select public.start_session('${bay.id}', 'Someone', 1)`), /already in play/i);
 
 const stopped = await one(`select * from public.stop_session('${started.id}', 'upi')`);
-// started a moment ago, so one minute at ₹120/hr
-ok('stop bills the time on the timer', stopped.amount === 2 && stopped.billed_minutes === 1,
+// started a moment ago, so one minute at ₹250/hr: 250/60 rounds to 4
+ok('stop bills the time on the timer', stopped.amount === 4 && stopped.billed_minutes === 1,
   `${stopped.amount} / ${stopped.billed_minutes}`);
 ok('stop records the payment method', stopped.payment_method === 'upi');
 
 const again = await one(`select * from public.stop_session('${started.id}', 'cash')`);
-ok('stopping twice does not re-bill', again.amount === 2 && again.payment_method === 'upi',
+ok('stopping twice does not re-bill', again.amount === 4 && again.payment_method === 'upi',
   `${again.amount} / ${again.payment_method}`);
 const stopAudits = await one(`select count(*)::int as c from public.audit_log where action = 'session.stop'`);
 ok('the second stop writes no second audit row', stopAudits.c === 1, `got ${stopAudits.c}`);
+
+// ---- pricing by head count ----------------------------------------------
+console.log('\n— rate card —');
+const bay3Rates = await one(`select id, rate_per_hour from public.stations where name = 'Bay 03'`);
+const tiers = await one(`select count(*)::int as c from public.station_rates where station_id = '${bay3Rates.id}'`);
+ok('seed loads the PS5 rate card', tiers.c === 4, `got ${tiers.c}`);
+
+for (const [players, expected] of [[1, 150], [2, 250], [3, 350], [4, 450], [9, 450]]) {
+  const row = await one(`select public.rate_for('${bay3Rates.id}', ${players}) as rate`);
+  ok(`${players} player${players === 1 ? '' : 's'} is ₹${expected}/hr`, row.rate === expected, `got ${row.rate}`);
+}
+
+const rigRate = await one(`select public.rate_for((select id from public.stations where name = 'Rig 01'), 2) as rate`);
+ok('a station with no tiers keeps its flat rate', rigRate.rate === 200, String(rigRate.rate));
+
+const four = await one(`select * from public.start_session('${bay3Rates.id}', 'Four up', 4)`);
+ok('a session snapshots the head-count rate', four.rate_snapshot === 450, String(four.rate_snapshot));
+await db.exec(`select public.stop_session('${four.id}', 'cash')`);
+await db.exec(`delete from public.play_sessions where guest_name = 'Four up'`);
 
 // ---- the optional phone -------------------------------------------------
 console.log('\n— guest phone —');
@@ -168,9 +193,9 @@ const bay3 = await one(`select id from public.stations where name = 'Bay 03'`);
 const toSettle = await one(`select * from public.start_session('${bay3.id}', 'Regular', 2)`);
 const settled = await one(`select * from public.stop_session('${toSettle.id}', 'cash', 100)`);
 ok('the settled amount is what was taken', settled.amount === 100, String(settled.amount));
-ok('the clock figure is kept beside it', settled.quoted_amount === 2, String(settled.quoted_amount));
+ok('the clock figure is kept beside it', settled.quoted_amount === 4, String(settled.quoted_amount));
 const settleAudit = await one(`select detail from public.audit_log order by id desc limit 1`);
-ok('the gap is written to the audit log', settleAudit.detail.settled_off_quote === 98, JSON.stringify(settleAudit.detail));
+ok('the gap is written to the audit log', settleAudit.detail.settled_off_quote === 96, JSON.stringify(settleAudit.detail));
 
 const plain = await one(`select * from public.start_session('${bay3.id}', 'Plain', 1)`);
 const plainStop = await one(`select * from public.stop_session('${plain.id}', 'upi')`);
@@ -219,8 +244,8 @@ await raises('a staff account cannot close the day',
 
 await act(MANAGER);
 const closure = await one(`select * from public.close_day('${today}')`);
-// Bay 01 at ₹120/hr and Rig 01 at ₹200/hr, a minute each: ₹2 + ₹3 (200/60 rounds to 3)
-ok('close_day stores the takings', closure.totals.total === 5 && closure.totals.cash === 3 && closure.totals.upi === 2,
+// Bay 01 at the two-player ₹250/hr and Rig 01 at its flat ₹200/hr, a minute each: ₹4 + ₹3
+ok('close_day stores the takings', closure.totals.total === 7 && closure.totals.cash === 3 && closure.totals.upi === 4,
   JSON.stringify(closure.totals));
 
 // ---- a closed day is frozen ---------------------------------------------

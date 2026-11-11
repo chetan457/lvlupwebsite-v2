@@ -64,6 +64,13 @@ real gate is `currentStaff()` in the layout and pages.
 price must never rewrite what a guest was charged last Tuesday, and a day sheet
 has to keep adding up months later.
 
+**Price follows the head count.** Each station carries a rate card — one row per
+group size, ₹150 / ₹250 / ₹350 / ₹450 for one to four on a PS5 bay — because a
+lounge charges the second head differently from the fourth. A group larger than
+the top tier pays the top tier; a station with no tiers bills its flat rate. The
+rate is chosen when play starts and copied onto the session, so editing the card
+never rewrites a bill already taken.
+
 **Billing rule in one place.** The amount is the station's rate spread over the
 minutes actually played, with any started minute counted in full (61 seconds is
 two minutes). There is no minimum charge: the bill tracks the timer.

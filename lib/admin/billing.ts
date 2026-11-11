@@ -56,6 +56,23 @@ export function settlement(quoted: number | null | undefined, settled: number | 
   return { kind, percent, difference, label: `${sign}${size} ${kind}` };
 }
 
+/**
+ * What an hour costs for this many people: their own tier, else the nearest
+ * tier below, else the station's flat rate. Mirrors rate_for() in
+ * supabase/migrations/0005_player_rates.sql, which is what actually charges.
+ */
+export function rateFor(
+  tiers: { players: number; rate_per_hour: number }[],
+  flatRate: number,
+  players: number,
+): number {
+  const wanted = Math.max(1, Math.trunc(players) || 1);
+  const match = tiers
+    .filter((tier) => tier.players <= wanted)
+    .sort((a, b) => b.players - a.players)[0];
+  return match ? match.rate_per_hour : flatRate;
+}
+
 export function rupees(amount: number | null | undefined): string {
   return `₹${Math.round(amount ?? 0).toLocaleString('en-IN')}`;
 }

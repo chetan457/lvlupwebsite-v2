@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
+import { RateCard } from '@/components/admin/rate-card';
 import { AddStationForm } from '@/components/admin/add-station-form';
 import { StationAdminRow } from '@/components/admin/station-admin-row';
 import { currentStaff, getAllStations, getStationKinds } from '@/lib/admin/queries';
@@ -69,10 +70,13 @@ export default async function StationsPage() {
         </table>
       </div>
 
+      <RateCard stations={stations} canEdit={canEdit} />
+
       <section className="border border-edge bg-surface-hi/40 p-4 sm:p-5">
         <h2 className="eyebrow text-accent">How a session is billed</h2>
         <ul className="mt-3 space-y-2 text-sm text-dim">
-          <li>The bill is the rate spread over the minutes actually played.</li>
+          <li>The rate comes from the head count on the rate card above.</li>
+          <li>The bill is that rate spread over the minutes actually played.</li>
           <li>Any started minute counts in full, so 61 seconds is two minutes.</li>
           <li>At billing, the amount can be changed to whatever was actually taken; both figures are kept.</li>
           <li>

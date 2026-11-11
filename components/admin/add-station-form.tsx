@@ -104,6 +104,8 @@ export function AddStationForm({ kinds }: { kinds: StationKind[] }) {
             min={1}
             max={50}
             step={1}
+            onFocus={(event) => event.target.select()}
+            onClick={(event) => event.currentTarget.select()}
             value={seats}
             onChange={(event) => setSeats(event.target.value)}
             className={`${field} tabular-nums`}
@@ -118,6 +120,8 @@ export function AddStationForm({ kinds }: { kinds: StationKind[] }) {
             min={0}
             max={10000}
             step={10}
+            onFocus={(event) => event.target.select()}
+            onClick={(event) => event.currentTarget.select()}
             value={rate}
             onChange={(event) => setRate(event.target.value)}
             className={`${field} tabular-nums`}

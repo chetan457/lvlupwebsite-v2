@@ -63,6 +63,8 @@ export function StationAdminRow({ station, canEdit }: { station: Row; canEdit: b
             min={0}
             max={10000}
             step={10}
+            onFocus={(event) => event.target.select()}
+            onClick={(event) => event.currentTarget.select()}
             value={rate}
             disabled={!canEdit || pending}
             onChange={(event) => setRate(event.target.value)}

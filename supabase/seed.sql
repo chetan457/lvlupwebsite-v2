@@ -21,3 +21,12 @@ insert into public.stations (name, kind_id, seats, rate_per_hour, sort) values
   ('VR 01',      'vr',    2, 250, 5),
   ('Party room', 'party', 8, 900, 6)
 on conflict (name) do nothing;
+
+-- Per-head pricing on the PS5 bays: ₹150 for one, ₹250 for two, ₹350 for three,
+-- ₹450 for four. A station with no tiers falls back to stations.rate_per_hour.
+insert into public.station_rates (station_id, players, rate_per_hour)
+select s.id, t.players, t.rate
+from public.stations s
+cross join (values (1, 150), (2, 250), (3, 350), (4, 450)) as t(players, rate)
+where s.kind_id = 'ps5' and t.players <= greatest(s.seats, 1)
+on conflict (station_id, players) do update set rate_per_hour = excluded.rate_per_hour;

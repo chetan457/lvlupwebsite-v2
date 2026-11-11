@@ -48,9 +48,16 @@ export type PlaySession = {
   day: string;
 };
 
-/** A station with its kind and whatever is playing on it right now. */
+/** What an hour costs at a given head count. The highest tier at or below the count wins. */
+export type RateTier = {
+  players: number;
+  rate_per_hour: number;
+};
+
+/** A station with its kind, its rate card and whatever is playing on it right now. */
 export type FloorStation = Station & {
   kind_label: string;
+  rates: RateTier[];
   open_session: PlaySession | null;
 };
 
