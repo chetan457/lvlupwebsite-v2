@@ -2,10 +2,11 @@
  * The business details, feeding the visible pages, the structured data and the
  * sitemap from one place so nothing can drift out of sync.
  *
- * Confirmed: the address and the phone number. Still to confirm before the site
- * is indexed, each marked TO CONFIRM below: the domain, the email, the
- * Instagram handle and the Maps pin. A placeholder is left as an obvious
- * placeholder rather than dressed up as real.
+ * Confirmed: the address, the phone number and the domain. Still to confirm
+ * before the site is indexed, each marked TO CONFIRM below: the email, the
+ * Instagram handle and the Maps pin — and the opening hours in content/hours.ts,
+ * which are still guesses. A placeholder is left as an obvious placeholder
+ * rather than dressed up as real.
  */
 
 export const site = {
@@ -24,10 +25,8 @@ export const site = {
     'A PS5 lounge in Nadiad, Gujarat. Big screens, controllers cleaned between sessions. ₹150 an hour for one player, ₹250 for two, ₹350 for three, ₹450 for four — one bill for the bay.',
   shortDescription: 'PS5 by the hour in Nadiad, Gujarat. From ₹150.',
 
-  /** TO CONFIRM: the real domain. Used for canonicals and OG tags, and the
-   * reason SITE_INDEXABLE stays off — a canonical pointing at .example would
-   * teach search engines the wrong home. */
-  url: 'https://lvlup-lounge.example',
+  /** The live domain. Canonicals, OG tags and the sitemap are built from it. */
+  url: 'https://lvlupzone.in',
 
   phone: '+918401665488',
   phoneDisplay: '+91 84016 65488',
