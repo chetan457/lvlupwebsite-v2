@@ -123,7 +123,7 @@ export const tournament = {
 
 export const included = [
   'Controllers, cleaned and charged between sessions',
-  'Air conditioning and water, both on the house',
+  'Wi-Fi, free while you play',
   'Phone chargers, kept behind the counter',
   'Your game, installed and patched before you sit down',
 ];

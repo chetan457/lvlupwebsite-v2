@@ -80,7 +80,7 @@ export const chapters: Chapter[] = [
       {
         id: 'on-the-house',
         kicker: 'On the house',
-        title: 'Cold room, free water',
+        title: 'Free Wi-Fi',
         body: `${included[1]}. ${notIncluded[0]}.`,
       },
       {
