@@ -28,7 +28,7 @@ export const games: Game[] = [
   { slug: 'wwe-2k25', title: 'WWE 2K25', players: '1–4', note: 'Silly and loud. Holds up when half the group is new', trailer: 'KbLboBQCDP0' },
   { slug: 'rocket-league', title: 'Rocket League', players: '1–4', note: '2 minutes to explain, and then it is a fair fight', trailer: 'NC82dWrFqCE' },
   { slug: 'it-takes-two', title: 'It Takes Two', players: '2', note: 'Needs both of you the whole way; no solo mode', trailer: '2AysHTv7X8k' },
-  { slug: 'f1-25', title: 'F1 25', players: '1–2', note: 'Fine on a pad; the wheel comes with the racing rig', trailer: 'u5rWBgBjDsc' },
+  { slug: 'f1-25', title: 'F1 25', players: '1–2', note: 'Plays fine on a pad; no wheel in the room yet', trailer: 'u5rWBgBjDsc' },
 ];
 
 export const platform = 'PlayStation 5';

@@ -48,11 +48,8 @@ export type BayRate = {
   offPeak: number | null;
 };
 
-export const bayRates: BayRate[] = [
-  { station: 'Bay 01 · 02 · 03 · 05', players: '1–2', weekday: 120, weekend: 150, offPeak: 90 },
-  { station: 'The Recliner', players: '1–2', weekday: 250, weekend: 300, offPeak: 190 },
-  { station: 'Whole lounge', players: 'up to 10', weekday: 1200, weekend: 1500, offPeak: null },
-];
+/** PLACEHOLDER. Not rendered anywhere; the public card is `rates` above. */
+export const bayRates: BayRate[] = [];
 
 export type Pass = {
   id: string;

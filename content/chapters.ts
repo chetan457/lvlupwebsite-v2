@@ -97,12 +97,15 @@ export const chapters: Chapter[] = [
     nav: 'Bays',
     overline: 'Character select',
     title: ['Pick', 'your bay'],
-    heading: 'Each bay suits a different kind of night.',
-    body: 'The Recliner goes first at the weekend. Bays 01 and 02 sit side by side for couch co-op. Bay 03 is the quiet corner at the back, and Bay 05 is the one you can grab without booking.',
+    heading: 'Three bays, each one the full setup.',
+    body: 'A PS5, a 65-inch screen and bean bags on every bay, with four pads so nobody sits out. Book one for the group or take it alone.',
     stats: [
-      { label: 'Live now', value: `${liveStations.length} stations` },
-      { label: 'Per bay', value: `${rupees(Math.min(...liveRates))}–${rupees(Math.max(...liveRates))} /hr` },
-      { label: 'Coming soon', value: soonStations.map((s) => s.name).join(', ') },
+      { label: 'Live now', value: `${liveStations.length} bays` },
+      { label: 'Screens', value: '65-inch, one each' },
+      // only shown once there is something to announce; an empty "coming soon" reads as a gap
+      ...(soonStations.length
+        ? [{ label: 'Coming soon', value: soonStations.map((s) => s.name).join(', ') }]
+        : [{ label: 'Per bay', value: `from ${rupees(Math.min(...liveRates))}/hr` }]),
     ],
     slidesLabel: 'The stations',
     slidesUnit: 'stations',
@@ -114,7 +117,7 @@ export const chapters: Chapter[] = [
       stat:
         station.rate === null
           ? { label: 'Rate', value: 'Soon' }
-          : { label: `${station.seats} seats`, value: `${rupees(station.rate)}/hr` },
+          : { label: `Up to ${station.seats}`, value: `from ${rupees(station.rate)}/hr` },
       tag: station.status,
     })),
     cta: { label: 'Hold a bay' },

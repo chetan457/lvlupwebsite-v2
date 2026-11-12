@@ -953,11 +953,9 @@ function screenTexture(ctx: Ctx, kind: ScreenKind): THREE.CanvasTexture {
 
 /** Mirrors SCREENS in assets-src/build_models.py: the frames come from Blender, the pictures from here. */
 const SCREENS: { cx: number; cy: number; w: number; h: number; kind: ScreenKind }[] = [
-  { cx: -2.75, cy: 1.0, w: 2.4, h: 1.45, kind: 'race' },
-  { cx: 0, cy: 1.25, w: 2.8, h: 1.7, kind: 'pitch' },
-  { cx: 2.75, cy: 1.0, w: 2.4, h: 1.45, kind: 'fight' },
-  { cx: -1.4, cy: -1.25, w: 2.4, h: 1.45, kind: 'space' },
-  { cx: 1.4, cy: -1.25, w: 2.4, h: 1.45, kind: 'start' },
+  { cx: -3.05, cy: 0.9, w: 2.7, h: 1.6, kind: 'race' },
+  { cx: 0, cy: 1.15, w: 3.0, h: 1.8, kind: 'pitch' },
+  { cx: 3.05, cy: 0.9, w: 2.7, h: 1.6, kind: 'fight' },
 ];
 
 function bays(ctx: Ctx): HeroModel {
@@ -974,7 +972,7 @@ function bays(ctx: Ctx): HeroModel {
     ctx.add(holder, new THREE.PlaneGeometry(screen.w, screen.h), panel, 0, 0, 0.047);
   }
 
-  const model = wrap(ctx, inner, { rx: 0.12, ry: -0.42, k: 0.72 });
+  const model = wrap(ctx, inner, { rx: 0.12, ry: -0.42, k: 0.62 });
   deferLoad(model, ctx, 'bays', (scene) => {
     inner.add(scene);
     model.ready = true;

@@ -58,8 +58,9 @@ export const site = {
   priceRange: '₹₹',
   currency: 'INR',
 
-  seats: 10,
-  bays: 5,
+  /** Four bean bags to a bay, three bays. */
+  seats: 12,
+  bays: 3,
 } as const;
 
 export const addressLines = [

@@ -1,6 +1,12 @@
 import type { PhotoKey } from './images';
 
-/** PLACEHOLDER INVENTORY. Replace from the Stations tab of the spreadsheet. */
+/**
+ * The real floor: three PS5 bays, each with a 65-inch screen and bean bags.
+ *
+ * They are deliberately described as the same thing three times, because they
+ * are. Inventing a "quiet corner" or a "weekend favourite" to make the cards
+ * read differently would be a promise about a room the visitor has not seen.
+ */
 
 export type Station = {
   id: string;
@@ -8,8 +14,9 @@ export type Station = {
   /** 'live' is bookable today; 'soon' is announced but not sold. */
   status: 'live' | 'soon';
   kind: 'PS5' | 'Racing' | 'PC';
-  /** Rupees per hour. Null while a station is still being built. */
+  /** Rupees for the cheapest hour on this bay — one player. Null while a station is still being built. */
   rate: number | null;
+  /** How many can play at once. The rate card in content/pricing.ts prices each head. */
   seats: number;
   blurb: string;
   specs: string[];
@@ -20,76 +27,41 @@ export type Station = {
 
 export const stations: Station[] = [
   {
-    id: 'recliner',
-    name: 'The Recliner',
+    id: 'bay-01',
+    name: 'Bay 01',
     status: 'live',
     kind: 'PS5',
-    rate: 250,
-    seats: 2,
+    rate: 150,
+    seats: 4,
     blurb:
-      'The bay that goes first at the weekend. 2 full recliners, a 65-inch OLED at eye level and the only bay with its own sound bar instead of headsets.',
-    specs: ['PS5 Pro', '65" OLED · 120Hz', '2 recliners', 'Sound bar', 'Private corner'],
-    photo: 'recliner',
+      'A PS5, a 65-inch screen and bean bags you sink into. Four pads, so the whole group plays rather than taking turns watching.',
+    specs: ['PS5', '65" screen', 'Bean bags', '4 controllers'],
+    photo: 'couchCoop',
     feature: true,
   },
   {
-    id: 'bay-01-02',
-    name: 'Bay 01 · 02',
+    id: 'bay-02',
+    name: 'Bay 02',
     status: 'live',
     kind: 'PS5',
-    rate: 120,
+    rate: 150,
     seats: 4,
     blurb:
-      '2 bays side by side, close enough that you watch the other screen between rounds. Best for couch co-op and anyone who turned up with one friend.',
-    specs: ['PS5', '55" 4K · 120Hz', '2 seats each', '4 controllers'],
-    photo: 'couchCoop',
+      'The same setup as the others — 65-inch screen, bean bags, four pads. Nothing about the bay decides your night; the game does.',
+    specs: ['PS5', '65" screen', 'Bean bags', '4 controllers'],
+    photo: 'controller',
   },
   {
     id: 'bay-03',
     name: 'Bay 03',
     status: 'live',
     kind: 'PS5',
-    rate: 120,
-    seats: 2,
+    rate: 150,
+    seats: 4,
     blurb:
-      'The back corner, furthest from the door. The counter noise and the lane outside both drop away here, which is why people who come alone to finish a story sit here.',
-    specs: ['PS5', '55" 4K', '2 seats'],
-    photo: 'controller',
-  },
-  {
-    id: 'bay-05',
-    name: 'Bay 05',
-    status: 'live',
-    kind: 'PS5',
-    rate: 120,
-    seats: 2,
-    blurb:
-      'Nearest the counter, so it is the easiest one to grab without booking. You will hear us on the phone; that is the trade.',
-    specs: ['PS5', '55" 4K', '2 seats'],
+      'PS5, 65-inch screen, bean bags, four pads. Book it for a group or take it alone and stretch out.',
+    specs: ['PS5', '65" screen', 'Bean bags', '4 controllers'],
     photo: 'console',
-  },
-  {
-    id: 'racing-rig',
-    name: 'Racing rig',
-    status: 'soon',
-    kind: 'Racing',
-    rate: null,
-    seats: 1,
-    blurb:
-      'Wheel, pedals and a bucket seat, bolted to a frame rather than clamped to a table. You sit low in it, the way you would in the car.',
-    specs: ['Force feedback wheel', 'Bucket seat'],
-    photo: 'racing',
-  },
-  {
-    id: 'pc-bay',
-    name: 'PC bay',
-    status: 'soon',
-    kind: 'PC',
-    rate: null,
-    seats: 1,
-    blurb: '240Hz panel and wired peripherals for the Valorant and CS crowd. One seat, upright, no couch.',
-    specs: ['240Hz', 'Wired peripherals'],
-    photo: 'pc',
   },
 ];
 

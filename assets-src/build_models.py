@@ -335,7 +335,8 @@ def build_controller(_args):
     return parts, []
 
 
-SCREENS = [(-2.75, 1.0, 2.4, 1.45), (0, 1.25, 2.8, 1.7), (2.75, 1.0, 2.4, 1.45), (-1.4, -1.25, 2.4, 1.45), (1.4, -1.25, 2.4, 1.45)]
+# three bays, three screens — the room has no fourth
+SCREENS = [(-3.05, 0.9, 2.7, 1.6), (0, 1.15, 3.0, 1.8), (3.05, 0.9, 2.7, 1.6)]
 
 
 def build_bays(_args):
@@ -361,13 +362,13 @@ def build_bays(_args):
         parts.append(box(f'neck{i}', 0.14, neck, 0.08, 0.03, 2, m['stand'], at(0, -h / 2 - neck / 2, -0.03), (0, turn, 0)))
         parts.append(box(f'foot{i}', 0.9, 0.05, 0.42, 0.02, 2, m['stand'], at(0, -h / 2 - neck, 0.02), (0, turn, 0)))
 
-    y, z = -2.9, 2.8
-    parts.append(box('seat', 3.8, 0.42, 1.3, 0.1, 5, m['fabric'], (0, y + 0.26, z)))
-    parts.append(box('back', 3.8, 0.95, 0.38, 0.14, 5, m['fabric'], (0, y + 0.75, z + 0.48)))
-    for side in (-1, 1):
-        parts.append(box(f'arm{side}', 0.36, 0.72, 1.3, 0.12, 5, m['fabric'], (side * 1.9, y + 0.6, z)))
-        parts.append(box(f'cushion{side}', 1.62, 0.22, 0.95, 0.1, 5, m['cushion'], (side * 0.84, y + 0.56, z - 0.12)))
-    parts.append(box('strip', 3.6, 0.03, 0.03, 0, 0, m['glow'], (0, y + 0.05, z + 0.66)))
+    # bean bags, not a couch: a heavily bevelled box slumps the way a filled bag does
+    y, z = -2.55, 2.6
+    for i, (cx, _cy, _w, _h) in enumerate(SCREENS):
+        bx = cx * 0.62
+        parts.append(box(f'bag{i}', 1.5, 0.78, 1.35, 0.62, 6, m['fabric'], (bx, y + 0.39, z), (0.06, -cx * 0.1, 0)))
+        parts.append(box(f'dent{i}', 1.0, 0.3, 0.9, 0.28, 5, m['cushion'], (bx, y + 0.68, z + 0.06), (0.1, -cx * 0.1, 0)))
+    parts.append(box('strip', 6.4, 0.03, 0.03, 0, 0, m['glow'], (0, y - 0.08, z + 0.95)))
 
     return parts, []
 
