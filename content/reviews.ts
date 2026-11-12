@@ -1,8 +1,16 @@
+import { buyout, cheapestHour, payment, rates } from './pricing';
+import { liveStations } from './stations';
+
 /**
- * PLACEHOLDER REVIEWS.
- * Replace with real, verbatim Google reviews before launch — these back the
- * AggregateRating in the structured data, and inventing them would be both
- * dishonest and a schema violation.
+ * REVIEWS: empty, on purpose.
+ *
+ * This file used to carry three invented Google reviews, and content/site.ts a
+ * 4.7 rating from 23 of them. They fed the AggregateRating markup, which makes
+ * a fabricated rating a Google policy violation as well as a lie to a visitor
+ * who has not been to the room yet. Paste real reviews in here — verbatim, with
+ * the reviewer's own name — once the lounge has them, and set `site.rating` to
+ * the figure Google shows. The reviews block and the rating markup both appear
+ * only when this array is non-empty.
  */
 
 export type Review = {
@@ -12,29 +20,18 @@ export type Review = {
   source: string;
 };
 
-export const reviews: Review[] = [
-  {
-    name: 'Aditya Rane',
-    stars: 5,
-    source: 'Google',
-    text: 'Booked the recliner bay for my brother’s birthday. Controllers were clean, the AC was actually cold, and FC 26 was already installed so we could just start playing. Would recommend.',
-  },
-  {
-    name: 'Faiz Qureshi',
-    stars: 5,
-    source: 'Google',
-    text: 'Came on a Wednesday afternoon, place was almost empty and we got the off-peak rate. 2 hours of Tekken for ₹180. Screens are good and none of the controllers drifted.',
-  },
-  {
-    name: 'Sneha Kulkarni',
-    stars: 4,
-    source: 'Google',
-    text: 'Good setup and fair pricing. Parking after 8 pm was a pain, we went round the lane twice before we found a spot, so take an auto if you can. Staff let us extend by half an hour without any fuss. Losing a star for the parking only.',
-  },
-];
+export const reviews: Review[] = [];
+
+const rupees = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
+const rate = (id: string) => rupees(rates.find((r) => r.id === id)?.amount ?? 0);
 
 export type Faq = { question: string; answer: string };
 
+/**
+ * The visible FAQ, and the source of the FAQPage markup. Prices are
+ * interpolated from the rate card rather than typed, so an answer cannot quote
+ * a figure the rates chapter contradicts.
+ */
 export const faqs: Faq[] = [
   {
     question: 'Do I need to book ahead?',
@@ -43,13 +40,16 @@ export const faqs: Faq[] = [
   },
   {
     question: 'Is the rate per person or per bay?',
-    answer:
-      'Per hour, and it depends how many are playing: ₹150 for one, ₹250 for two, ₹350 for three, ₹450 for four. One bill for the bay, not a ticket each.',
+    answer: `Per hour, and it depends how many are playing: ${rate('solo')} for one, ${rate('duo')} for two, ${rate('trio')} for three, ${rate('squad')} for four. One bill for the bay, not a ticket each.`,
   },
   {
     question: 'What can I play?',
     answer:
-      'PlayStation 5 only for now. Everything on the rack is installed and patched. Ask for a title we do not stock and we will download it ahead of your slot.',
+      'PlayStation 5 only. Everything on the rack is installed and patched before you sit down. Ask for a title we do not stock and we will download it ahead of your slot.',
+  },
+  {
+    question: 'How many can play at once?',
+    answer: `${liveStations.length} bays, four pads and four bean bags on each, so ${buyout.seats} people can play at the same time. A bay is yours whether one of you turns up or four.`,
   },
   {
     question: 'Is there an age limit?',
@@ -57,19 +57,28 @@ export const faqs: Faq[] = [
       'No upper limit. Under-12s are welcome with an adult along. We will not put on an 18-rated game for a child, whatever the group says.',
   },
   {
-    question: 'Can I book the whole place for a birthday?',
-    answer:
-      'Yes. Every bay, 10 seats and the sound system, on a 2-hour minimum. Message us with the date and we will check it is free.',
+    question: 'Can I book the whole place?',
+    answer: `Yes — all ${buyout.bays} bays and ${buyout.seats} seats at ${rupees(buyout.ratePerHour)} an hour, which is the same as booking each bay for four players. Message us with the date and we will check it is free.`,
   },
   {
     question: 'How do I pay?',
-    answer: 'UPI or cash at the counter. Party bookings take an advance to hold the date.',
+    answer: `${payment.methods} ${payment.cancellation}`,
+  },
+  {
+    question: 'Where exactly is it?',
+    answer:
+      'Nadiad Nexus-I, third floor, offices 332–333. Take the lift to the third floor and you are at the door.',
   },
 ];
 
+/**
+ * House rules. Kept to things that are true of any room with a console in it —
+ * the earlier list described a recliner platform the lounge does not have and
+ * counted two years of broken controllers before it had opened.
+ */
 export const houseRules = [
-  'Shoes off on the recliner platform. Everywhere else they stay on.',
-  'Food comes from the counter, except a cake for a party booking. Wherever it came from, we ask you to keep it off the seats.',
-  'Break a controller and we charge what a new one costs us, nothing on top. It has happened twice in 2 years.',
-  'Cancel a party booking 24 hours ahead and the advance comes back. Do not turn up and we keep it.',
+  `Rates start at ${rupees(cheapestHour)} an hour and go up with the group, not with the clock.`,
+  'Food and drink stay off the seats and off the pads.',
+  'Break a controller and we charge what a new one costs us, nothing on top.',
+  'Message us if you are running late and the bay waits; we cannot hold it without a word.',
 ];

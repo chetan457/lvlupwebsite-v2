@@ -116,16 +116,21 @@ function controller(step: number): Voxel[] {
   return transform(out, { rx: -0.42, ry: -0.5, rz: 0.1, k: 0.72 });
 }
 
-/** Chapter 2 — five screens, one per bay, the centre one larger like the Recliner's OLED. */
+/**
+ * Chapter 2 — one screen per bay, three of them, all the same size.
+ *
+ * It used to be five, with a larger one in the middle standing for a recliner
+ * bay with an OLED. There are three bays and they are identical, so the
+ * formation is three identical screens: the scene counts the inventory as
+ * surely as the cards do.
+ */
 function bays(step: number): Voxel[] {
   const out: Voxel[] = [];
   const s = step * 0.84;
   const screens = [
-    { cx: -2.75, cy: 1.0, w: 2.4, h: 1.45 },
-    { cx: 0, cy: 1.25, w: 2.8, h: 1.7 },
-    { cx: 2.75, cy: 1.0, w: 2.4, h: 1.45 },
-    { cx: -1.4, cy: -1.25, w: 2.4, h: 1.45 },
-    { cx: 1.4, cy: -1.25, w: 2.4, h: 1.45 },
+    { cx: -3.1, cy: 0.1, w: 2.6, h: 1.6 },
+    { cx: 0, cy: 0.1, w: 2.6, h: 1.6 },
+    { cx: 3.1, cy: 0.1, w: 2.6, h: 1.6 },
   ];
 
   for (const screen of screens) {

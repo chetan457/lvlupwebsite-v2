@@ -3,7 +3,7 @@ import { Experience } from '@/components/experience/experience';
 import { Finale } from '@/components/finale';
 import { ScrollDirector } from '@/components/scroll-director';
 import { chapters } from '@/content/chapters';
-import { jsonLd, reviewsSchema } from '@/lib/schema';
+import { faqSchema, jsonLd, reviewsSchema } from '@/lib/schema';
 
 /**
  * Refreshed every ten minutes so the open badge and today's row in the hours
@@ -12,6 +12,8 @@ import { jsonLd, reviewsSchema } from '@/lib/schema';
 export const revalidate = 600;
 
 export default function HomePage() {
+  const rating = reviewsSchema();
+
   return (
     <>
       <Experience />
@@ -20,8 +22,12 @@ export default function HomePage() {
       ))}
       <Finale index={chapters.length} />
       <ScrollDirector />
-      {/* rating markup rides with the visible reviews in the finale */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(reviewsSchema()) }} />
+      {/* the FAQ is rendered in the finale, which is what entitles the page to
+          FAQPage markup */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqSchema()) }} />
+      {/* rating markup rides with the visible reviews in the finale, and is null
+          until there are real ones */}
+      {rating ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(rating) }} /> : null}
     </>
   );
 }

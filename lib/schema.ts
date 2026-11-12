@@ -1,8 +1,7 @@
 import { site } from '@/content/site';
 import { hours } from '@/content/hours';
 import { reviews, faqs, type Faq } from '@/content/reviews';
-import { passes, buyout, tournament } from '@/content/pricing';
-import { cheapestHour, cheapestHourWhen } from '@/content/pricing';
+import { buyout, cheapestHour, cheapestHourWhen, dearestHour, rates } from '@/content/pricing';
 
 /**
  * Structured data, generated from the same content files the pages render.
@@ -40,7 +39,7 @@ export function localBusinessSchema() {
     description: site.description,
     url: site.url,
     telephone: site.phone,
-    email: site.email,
+    ...(site.email ? { email: site.email } : {}),
     priceRange: site.priceRange,
     currenciesAccepted: site.currency,
     paymentAccepted: 'UPI, Cash',
@@ -75,18 +74,21 @@ export function localBusinessSchema() {
         priceCurrency: site.currency,
         availability: 'https://schema.org/InStock',
       },
-      ...passes.map((p) => ({
+      // one offer per tier of the visible rate card, so the markup and the page
+      // quote the same four prices
+      ...rates.map((rate) => ({
         '@type': 'Offer',
-        name: p.name,
-        description: p.includes,
-        price: p.price,
+        name: `PS5 bay, ${rate.label.toLowerCase()}`,
+        description: rate.when,
+        price: rate.amount,
         priceCurrency: site.currency,
+        availability: 'https://schema.org/InStock',
       })),
       {
         '@type': 'Offer',
-        name: 'Whole-lounge buyout, per hour',
-        description: `Every bay and ${buyout.seats} seats, ${buyout.minimumHours}-hour minimum`,
-        price: buyout.rate,
+        name: 'Whole-lounge booking, per hour',
+        description: `All ${buyout.bays} bays and ${buyout.seats} seats — every bay at the ${dearestHour} four-player rate`,
+        price: buyout.ratePerHour,
         priceCurrency: site.currency,
       },
     ],
@@ -103,6 +105,10 @@ export function localBusinessSchema() {
  * @id merges the two nodes back into one business.
  */
 export function reviewsSchema() {
+  // No rating markup without reviews on the page to back it: an AggregateRating
+  // with nothing visible behind it earns a manual action, and with reviews empty
+  // there would be nothing true to put in it.
+  if (!reviews.length || !site.rating) return null;
   return {
     '@context': 'https://schema.org',
     '@type': 'EntertainmentBusiness',
@@ -135,52 +141,12 @@ export function faqSchema(items: Faq[] = faqs) {
   };
 }
 
-export function tournamentSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Event',
-    name: tournament.name,
-    description: `${tournament.format}. ${tournament.prize}.`,
-    // startDate is required — Google rejects an Event without one outright, and
-    // a recurrence with no anchor date has nothing to repeat from.
-    startDate: tournament.startDate,
-    endDate: tournament.endDate,
-    eventSchedule: {
-      '@type': 'Schedule',
-      startDate: tournament.startDate,
-      byDay: 'https://schema.org/Saturday',
-      startTime: tournament.startTime,
-      endTime: tournament.endTime,
-      scheduleTimezone: 'Asia/Kolkata',
-      repeatFrequency: 'P1W',
-    },
-    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-    eventStatus: 'https://schema.org/EventScheduled',
-    // spelled out rather than referenced: Google will not reliably resolve an
-    // @id that lives in a different <script> block
-    location: {
-      '@type': 'Place',
-      name: site.legalName,
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: `${site.address.line1}, ${site.address.line2}`,
-        addressLocality: site.address.city,
-        addressRegion: site.address.region,
-        postalCode: site.address.postalCode,
-        addressCountry: site.address.country,
-      },
-    },
-    organizer: { '@type': 'Organization', name: site.legalName, url: site.url },
-    offers: {
-      '@type': 'Offer',
-      name: 'Entry',
-      price: tournament.entry,
-      priceCurrency: site.currency,
-      availability: 'https://schema.org/InStock',
-      url: `${site.url}/pricing`,
-    },
-  };
-}
+/*
+ * tournamentSchema() lived here and emitted an Event for a weekly FC bracket
+ * with a ₹200 entry and a ₹2,000 pot. No such event has been scheduled, and
+ * Event markup for one that does not happen is exactly what Google's
+ * spam policies are about. Write it again when there is a real first date.
+ */
 
 export function breadcrumbSchema(trail: { name: string; path: string }[]) {
   return {

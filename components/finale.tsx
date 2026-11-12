@@ -2,13 +2,18 @@ import { BookButton } from '@/components/book-button';
 import { LiveBadge } from '@/components/live-badge';
 import { ButtonLink } from '@/components/ui/button';
 import { weekOrder } from '@/content/hours';
-import { reviews } from '@/content/reviews';
-import { addressLines, site } from '@/content/site';
+import { faqs, reviews } from '@/content/reviews';
+import { addressLines, mapEmbedUrl, site } from '@/content/site';
 import { formatRange, istDay, openState } from '@/lib/hours';
 
 /**
- * The last level: where the lounge is, when it is open, and what people said.
- * Its formation in the scene is the map pin.
+ * The last level: where the lounge is, when it is open, what people ask, and —
+ * once there are real ones — what people said. Its formation in the scene is
+ * the map pin.
+ *
+ * The map is an iframe only when content/site.ts holds the real pin. Until
+ * then the card carries the address and the Maps link, because an embed
+ * centred on a text search can show the wrong building with total confidence.
  */
 export function Finale({ index }: { index: number }) {
   // first paint only; LiveBadge re-checks against the lounge's clock after hydration
@@ -102,35 +107,98 @@ export function Finale({ index }: { index: number }) {
         </div>
       </div>
 
-      <div className="shell py-20">
-        <h3 className="eyebrow">
-          Google reviews · <span className="font-mono text-paper">{site.rating.value}</span> from{' '}
-          <span className="font-mono text-paper">{site.rating.count}</span>
-        </h3>
-        <ul className="mt-8 grid gap-4 md:grid-cols-2">
-          {reviews.map((review, i) => (
-            <li key={review.name} data-reveal className={`hud-card relative p-6 lg:p-8 ${i === 0 ? 'md:row-span-2' : ''}`}>
-              <span aria-hidden="true" className="brackets" />
-              <p className="flex gap-1">
-                <span className="sr-only">{review.stars} out of 5 stars</span>
-                {Array.from({ length: 5 }, (_, star) => (
-                  <span
-                    key={star}
-                    aria-hidden="true"
-                    className={`h-2.5 w-2.5 ${star < review.stars ? 'bg-accent' : 'bg-edge-hi'}`}
-                  />
-                ))}
-              </p>
-              <blockquote className={`mt-5 ${i === 0 ? 'font-display text-[1.35rem] leading-snug' : 'text-paper/90'}`}>
-                {review.text}
-              </blockquote>
-              <p className="eyebrow mt-6">
-                {review.name} · {review.source}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <div className="shell grid gap-8 pb-8 lg:grid-cols-[1.15fr_1fr] lg:items-start lg:gap-20">
+        <div data-reveal className="hud-card relative overflow-hidden p-0">
+          <span aria-hidden="true" className="brackets z-10" />
+          {mapEmbedUrl ? (
+            <iframe
+              src={mapEmbedUrl}
+              title={`Map showing ${site.legalName}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block h-[22rem] w-full border-0 grayscale-[0.4] contrast-[1.1]"
+            />
+          ) : (
+            <div className="flex h-full min-h-[14rem] flex-col justify-between gap-6 p-6 lg:p-8">
+              <div>
+                <h3 className="eyebrow">On the map</h3>
+                <p className="mt-4 text-paper">{addressLines.join(', ')}</p>
+                <p className="mt-3 text-dim">
+                  {site.landmark}. Search the building name in Maps and ask at the lift for the third floor.
+                </p>
+              </div>
+              <ButtonLink href={site.mapsUrl} variant="ghost">
+                Open in Maps
+              </ButtonLink>
+            </div>
+          )}
+        </div>
+
+        {/* the FAQ carries the card's backdrop: eight paragraphs of answer read
+            badly straight over the starfield */}
+        <div data-reveal className="hud-card relative p-6 lg:p-8">
+          <span aria-hidden="true" className="brackets" />
+          <h3 className="eyebrow">Before you come</h3>
+          <ul className="mt-5 border-t border-edge-hi">
+            {faqs.map((faq) => (
+              <li key={faq.question} className="border-b border-edge last:border-b-0">
+                <details className="group">
+                  <summary className="flex min-h-13 cursor-pointer items-center justify-between gap-4 py-4 text-paper marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span className="text-[0.98rem]">{faq.question}</span>
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 font-mono text-accent transition-transform duration-300 group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="pb-5 pr-8 text-[0.95rem] text-dim">{faq.answer}</p>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
+
+      {/* Real reviews only. The block disappears entirely rather than showing
+          invented quotes or an empty shelf. */}
+      {reviews.length ? (
+        <div className="shell py-20">
+          <h3 className="eyebrow">
+            Google reviews
+            {site.rating ? (
+              <>
+                {' · '}
+                <span className="font-mono text-paper">{site.rating.value}</span> from{' '}
+                <span className="font-mono text-paper">{site.rating.count}</span>
+              </>
+            ) : null}
+          </h3>
+          <ul className="mt-8 grid gap-4 md:grid-cols-2">
+            {reviews.map((review, i) => (
+              <li key={review.name} data-reveal className={`hud-card relative p-6 lg:p-8 ${i === 0 ? 'md:row-span-2' : ''}`}>
+                <span aria-hidden="true" className="brackets" />
+                <p className="flex gap-1">
+                  <span className="sr-only">{review.stars} out of 5 stars</span>
+                  {Array.from({ length: 5 }, (_, star) => (
+                    <span
+                      key={star}
+                      aria-hidden="true"
+                      className={`h-2.5 w-2.5 ${star < review.stars ? 'bg-accent' : 'bg-edge-hi'}`}
+                    />
+                  ))}
+                </p>
+                <blockquote className={`mt-5 ${i === 0 ? 'font-display text-[1.35rem] leading-snug' : 'text-paper/90'}`}>
+                  {review.text}
+                </blockquote>
+                <p className="eyebrow mt-6">
+                  {review.name} · {review.source}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <footer className="shell flex flex-wrap items-center justify-between gap-4 border-t border-edge py-8 pb-28 font-mono text-[0.66rem] uppercase tracking-[0.18em] text-dimmer lg:pb-8">
         <span>
