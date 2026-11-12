@@ -94,7 +94,9 @@ function LoginForm() {
       </form>
 
       <p className="mt-6 text-[0.8rem] text-dimmer">
-        Forgotten your password? Ask the owner to reset it from the Supabase dashboard.
+        <a href="/admin/forgot" className="transition-colors hover:text-paper">
+          Forgotten your password?
+        </a>
       </p>
     </div>
   );

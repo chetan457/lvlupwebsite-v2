@@ -15,7 +15,13 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 
 const LOGIN = '/admin/login';
-const HOME = '/admin';
+/**
+ * Reachable without a session, because someone who cannot sign in is exactly
+ * who needs them. /admin/reset carries its credential in the URL fragment,
+ * which never reaches a server — bouncing it to the login screen would throw
+ * the recovery link away before the browser could read it.
+ */
+const PUBLIC = new Set([LOGIN, '/admin/forgot', '/admin/reset']);
 
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,9 +52,8 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname, search } = request.nextUrl;
-  const onLogin = pathname === LOGIN;
 
-  if (!user && !onLogin) return bounce(request, response, LOGIN, pathname + search);
+  if (!user && !PUBLIC.has(pathname)) return bounce(request, response, LOGIN, pathname + search);
   // Deliberately no "already signed in, go to the floor" bounce: a session whose
   // staff row is missing or deactivated is turned away by every page, and bouncing
   // it back here would trap it in a redirect loop with no way to reach Sign out.

@@ -694,17 +694,20 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
   window.addEventListener('resize', layout);
   document.addEventListener('visibilitychange', onVisibility);
   /*
-   * Compile shaders off the main thread where the GPU driver allows it, so the
-   * first frame does not freeze the page.
+   * Warm the shaders before the first animated frame, so it does not stutter.
    *
-   * three's compileAsync polls each material's program from inside its own
-   * timer and reads `currentProgram.isReady()` without checking the program is
-   * there. When one is not — which is what a renderer with no
-   * KHR_parallel_shader_compile does, SwiftShader and iOS Safari among them —
-   * it throws out of the timer, where neither .then nor .catch can see it, and
-   * the promise stays pending for good. Waiting on it alone would leave the
-   * loop stopped and the scene frozen on exactly those devices. So the warm-up
-   * is raced against a deadline, and whichever lands first starts the loop.
+   * This used to call renderer.compileAsync. Do not put it back: three's
+   * version polls each material's program from inside its own timer and reads
+   * `currentProgram.isReady()` without checking the program is there. Where it
+   * is not — seen on software renderers, and on anything without
+   * KHR_parallel_shader_compile, iOS Safari included — it throws out of that
+   * timer, where neither .then nor .catch can see it, and the promise stays
+   * pending for good. The loop below would then never start and the scene
+   * would sit frozen on exactly those devices.
+   *
+   * compile() is the synchronous half of the same call and does the same GL
+   * work; only the wait for linking to finish is lost. The deadline behind it
+   * starts the loop even if compiling itself throws.
    */
   let started = false;
   const begin = () => {
@@ -715,19 +718,11 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
   };
   const warmDeadline = window.setTimeout(begin, 1200);
   try {
-    // the async path is only taken where the extension that makes it work is
-    // actually present; everywhere else the shaders compile synchronously,
-    // which costs one stalled frame instead of a thrown error and a dead loop
-    const gl = renderer.getContext();
-    if (gl.getExtension('KHR_parallel_shader_compile')) {
-      renderer.compileAsync(scene, camera).then(begin, begin);
-    } else {
-      renderer.compile(scene, camera);
-      begin();
-    }
+    renderer.compile(scene, camera);
   } catch {
-    begin();
+    // a driver that cannot precompile still renders; it just stutters once
   }
+  begin();
 
   return () => {
     stop();
