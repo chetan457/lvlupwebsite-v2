@@ -119,7 +119,7 @@ export function AddStationForm({ kinds }: { kinds: StationKind[] }) {
             inputMode="numeric"
             min={0}
             max={10000}
-            step={10}
+            step={1}
             onFocus={(event) => event.target.select()}
             onClick={(event) => event.currentTarget.select()}
             value={rate}

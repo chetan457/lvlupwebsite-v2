@@ -119,7 +119,7 @@ export function StationCard({ station, now }: Props) {
                     type="number"
                     inputMode="numeric"
                     min={0}
-                    step={10}
+                    step={1}
                     value={settled}
                     /* selected on every tap, not just the first: the box arrives
                        prefilled, and a till amount is retyped whole, never edited

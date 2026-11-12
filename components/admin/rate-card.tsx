@@ -134,7 +134,7 @@ export function RateCard({ stations, canEdit }: { stations: FloorStation[]; canE
               type="number"
               inputMode="numeric"
               min={1}
-              step={10}
+              step={1}
               onFocus={(event) => event.target.select()}
               onClick={(event) => event.currentTarget.select()}
               value={draft.rate}
