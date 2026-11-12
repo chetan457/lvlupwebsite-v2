@@ -1,4 +1,10 @@
-/** PLACEHOLDER RATES. Replace from the Pricing and Passes tabs before launch. */
+/**
+ * The real hourly card, matching what the console charges (station_rates in
+ * Supabase): the price is per hour and goes up with the size of the group.
+ *
+ * Everything BELOW the rate card — passes, bay rates, the buyout, the
+ * tournament — is still placeholder and is not shown on the public page.
+ */
 
 export type Rate = {
   id: string;
@@ -10,23 +16,10 @@ export type Rate = {
 };
 
 export const rates: Rate[] = [
-  {
-    id: 'off-peak',
-    label: 'Off-peak',
-    amount: 90,
-    unit: '/hr',
-    when: 'Mon–Fri, 1–5 pm. Any standard bay.',
-    highlight: true,
-  },
-  { id: 'standard', label: 'Standard', amount: 120, unit: '/hr', when: 'Mon–Fri, 5 pm onwards.' },
-  { id: 'weekend', label: 'Weekend', amount: 150, unit: '/hr', when: 'Sat & Sun, all day.' },
-  {
-    id: 'pass-10',
-    label: '10-hour pass',
-    amount: 999,
-    unit: '',
-    when: 'Works out to ₹100 an hour. Valid 3 months.',
-  },
+  { id: 'solo', label: 'One player', amount: 150, unit: '/hr', when: 'One pad, one player.', highlight: true },
+  { id: 'duo', label: 'Two players', amount: 250, unit: '/hr', when: 'Two pads on the same screen.' },
+  { id: 'trio', label: 'Three players', amount: 350, unit: '/hr', when: 'Three pads. FC, Rocket League, WWE.' },
+  { id: 'squad', label: 'Four players', amount: 450, unit: '/hr', when: 'Four pads, the full couch.' },
 ];
 
 /**
@@ -41,10 +34,11 @@ export const rates: Rate[] = [
  */
 const hourly = rates.filter((r) => r.unit === '/hr');
 export const cheapestHour = Math.min(...hourly.map((r) => r.amount));
-export const standardHour = rates.find((r) => r.id === 'standard')?.amount ?? 120;
+/** Two on a couch is the ordinary booking, so it is the figure to quote when one is needed. */
+export const standardHour = rates.find((r) => r.id === 'duo')?.amount ?? 250;
 export const dearestHour = Math.max(...hourly.map((r) => r.amount));
 /** The condition the cheapest figure comes with; never quote one without the other. */
-export const cheapestHourWhen = 'on a weekday afternoon';
+export const cheapestHourWhen = 'for one player';
 
 export type BayRate = {
   station: string;

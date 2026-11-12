@@ -11,15 +11,15 @@ export const site = {
   tagline: 'PlayStation 5 by the hour',
 
   /**
-   * Both strings below carry the "from ₹90" figure by hand, because meta text
+   * Both strings below carry the price figures by hand, because meta text
    * has to read as a sentence rather than as an interpolation. It has to match
    * `cheapestHour` in content/pricing.ts — change the rate card and change these.
    * `shortDescription` is not rendered anywhere yet; it is here for the day a
    * card or a share sheet needs the tagline-length version.
    */
   description:
-    'A PS5 lounge in Nadiad, Gujarat. 5 bays, big screens, controllers cleaned between sessions. Book by the hour from ₹90 on a weekday afternoon, or take the whole room for a party.',
-  shortDescription: 'PS5 by the hour in Nadiad, Gujarat. From ₹90.',
+    'A PS5 lounge in Nadiad, Gujarat. Big screens, controllers cleaned between sessions. ₹150 an hour for one player, ₹250 for two, ₹350 for three, ₹450 for four — one bill for the bay.',
+  shortDescription: 'PS5 by the hour in Nadiad, Gujarat. From ₹150.',
 
   /** Set to the real domain before launch; used for canonicals and OG tags. */
   url: 'https://lvlup-lounge.example',

@@ -1,5 +1,5 @@
 import { games, platform, type Game } from '@/content/games';
-import { buyout, included, notIncluded, passes, payment, rates, standardHour, cheapestHour, tournament } from '@/content/pricing';
+import { buyout, included, notIncluded, payment, rates, standardHour, cheapestHour, tournament } from '@/content/pricing';
 import { faqs } from '@/content/reviews';
 import { bookingMessage, partyMessage, site } from '@/content/site';
 import { liveStations, soonStations, stations } from '@/content/stations';
@@ -149,27 +149,20 @@ export const chapters: Chapter[] = [
     id: 'rates',
     nav: 'Rates',
     overline: 'Level up',
-    title: ['Rates &', 'passes'],
-    heading: 'Per bay, per hour. Not per person.',
-    body: `${answer('Is the rate per person')} Regulars save more with a pass.`,
+    title: ['Rates by', 'the hour'],
+    heading: 'One bill for the bay. The price follows the group.',
+    body: answer('Is the rate per person'),
     stats: hourly.map((rate) => ({ label: rate.label, value: `${rupees(rate.amount)}/hr` })),
     slidesLabel: 'The rate card',
     slidesUnit: 'prices',
     slides: [
       ...hourly.map<Slide>((rate) => ({
         id: rate.id,
-        kicker: 'Per bay, per hour',
+        kicker: 'Per hour, one bill',
         title: rate.label,
         body: rate.when,
         stat: { label: 'Rate', value: `${rupees(rate.amount)}/hr` },
         tag: rate.highlight ? 'best' : undefined,
-      })),
-      ...passes.map<Slide>((pass) => ({
-        id: pass.id,
-        kicker: `Valid ${pass.validity}`,
-        title: pass.name,
-        body: `${pass.includes}. ${pass.saving}.`,
-        stat: { label: 'Price', value: rupees(pass.price) },
       })),
     ],
     cta: { label: 'Book a bay', message: bookingMessage },

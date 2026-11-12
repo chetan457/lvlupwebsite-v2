@@ -44,7 +44,7 @@ export const faqs: Faq[] = [
   {
     question: 'Is the rate per person or per bay?',
     answer:
-      'Per bay, per hour — the figure covers whoever is on that couch.',
+      'Per hour, and it depends how many are playing: ₹150 for one, ₹250 for two, ₹350 for three, ₹450 for four. One bill for the bay, not a ticket each.',
   },
   {
     question: 'What can I play?',

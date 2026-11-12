@@ -40,8 +40,19 @@ export default async function StationsPage() {
         <p className="border border-edge bg-surface p-4 text-sm text-dim">Ask a manager to add a station.</p>
       )}
 
-      {/* the table, not the page, is what scrolls sideways on a phone */}
-      <div className="overflow-x-auto border border-edge bg-surface">
+      {/* a phone gets cards; six columns would hide the rate behind a sideways scroll */}
+      <div className="grid gap-px border border-edge bg-edge md:hidden">
+        {stations.length === 0 ? (
+          <p className="bg-surface px-4 py-8 text-center text-dim">No stations yet. Add the first one above.</p>
+        ) : (
+          stations.map((station) => (
+            <StationAdminRow key={station.id} station={station} canEdit={canEdit} layout="card" />
+          ))
+        )}
+      </div>
+
+      {/* the table, not the page, is what scrolls sideways from tablet width up */}
+      <div className="hidden overflow-x-auto border border-edge bg-surface md:block">
         <table className="w-full min-w-[46rem] border-collapse text-sm">
           <caption className="sr-only">Every station, retired ones included</caption>
           <thead>
