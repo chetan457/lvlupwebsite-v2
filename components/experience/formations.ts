@@ -14,7 +14,7 @@
 
 export type Quality = 'high' | 'low';
 
-export const FORMATION_NAMES = ['controller', 'bays', 'tunnel', 'rates', 'trophy', 'pin'] as const;
+export const FORMATION_NAMES = ['console', 'bays', 'tunnel', 'rates', 'trophy', 'pin'] as const;
 export const FORMATION_COUNT = FORMATION_NAMES.length;
 export const TUNNEL_INDEX = 2;
 
@@ -59,61 +59,56 @@ function transform(voxels: Voxel[], { rx = 0, ry = 0, rz = 0, k = 1 }): Voxel[] 
   });
 }
 
-function segmentDistance(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
-  const abx = bx - ax;
-  const aby = by - ay;
-  const t = Math.min(1, Math.max(0, ((px - ax) * abx + (py - ay) * aby) / (abx * abx + aby * aby)));
-  return Math.hypot(px - ax - abx * t, py - ay - aby * t);
-}
-
-function roundBox(px: number, py: number, cx: number, cy: number, hw: number, hh: number, r: number) {
-  const qx = Math.abs(px - cx) - hw + r;
-  const qy = Math.abs(py - cy) - hh + r;
-  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
-}
-
-/** Chapter 1 — a pad, drawn as a signed-distance silhouette and extruded. */
-function controller(step: number): Voxel[] {
+/**
+ * Chapter 1 — the console standing on its base: a black core between two white
+ * wings that flare toward the top, lit seams down the front. Same numbers as
+ * CONSOLE in assets-src/build_models.py, so the voxels lock onto the model.
+ */
+function consoleShape(step: number): Voxel[] {
   const out: Voxel[] = [];
   const s = step * 0.84;
   const push = (x: number, y: number, z: number, g = 0) => out.push({ x, y, z, s, g });
 
-  for (const x of grid(-4.2, 4.2, step)) {
-    for (const y of grid(-3.0, 2.2, step)) {
-      const body = Math.min(
-        roundBox(x, y, 0, 0.55, 2.4, 1.0, 0.7),
-        segmentDistance(x, y, -1.9, 0.4, -3.05, -1.95) - 1.05,
-        segmentDistance(x, y, 1.9, 0.4, 3.05, -1.95) - 1.05,
-      );
-      if (body > 0) continue;
+  // the wing's half-depth at a height: pinched waist, flared top, rounded corners
+  const wingDepth = (y: number) => {
+    if (y > 2.35) return 1.85 - (y - 2.35) * 0.75;
+    if (y < -2.2) return 1.45 - (-2.2 - y) * 0.6;
+    const t = Math.min(1, Math.max(0, (y + 0.8) / 3.15));
+    return 1.45 + 0.4 * t * t * (3 - 2 * t);
+  };
 
-      const rim = body > -step * 1.1;
-      const dpad =
-        (Math.abs(x + 2.05) < step * 0.75 && Math.abs(y - 0.5) < 0.6) ||
-        (Math.abs(y - 0.5) < step * 0.75 && Math.abs(x + 2.05) < 0.6);
-      const face = [
-        [2.05, 1.05],
-        [2.05, -0.05],
-        [1.5, 0.5],
-        [2.6, 0.5],
-      ].some(([cx, cy]) => Math.hypot(x - cx, y - cy) < 0.24);
-      const stick = Math.min(Math.hypot(x + 1.0, y + 0.6), Math.hypot(x - 1.0, y + 0.6));
-      const pad = Math.abs(x) < 1.2 && y > 0.4 && y < 1.4;
-      const lightbar = Math.abs(x) < 1.2 && Math.abs(y - 1.52) < step * 0.6;
-
-      push(x, y, -step);
-      // side walls only on the rim, so the silhouette has depth without filling the core
-      if (rim) push(x, y, 0);
-      // the touchpad sits a little lower than the shell around it
-      push(x, y, pad ? step * 0.4 : step, lightbar ? 1 : 0);
-      if (dpad || face) push(x, y, step * 2, 1);
-      if (stick < 0.5) push(x, y, step * 2);
-      if (stick < 0.5 && stick > 0.3) push(x, y, step * 3);
-      if (stick < 0.14) push(x, y, step * 3, 1);
+  // wings: one sheet of voxels each side, leaning out toward the top
+  for (const side of [-1, 1]) {
+    for (const y of grid(-2.6, 2.8, step)) {
+      const depth = wingDepth(y);
+      for (const z of grid(-1.8, 1.8, step)) {
+        if (Math.abs(z) > depth) continue;
+        push(side * (0.56 + 0.045 * y), y, z);
+      }
     }
   }
 
-  return transform(out, { rx: -0.42, ry: -0.5, rz: 0.1, k: 0.72 });
+  // core: only its skin, so the count stays near the other chapters
+  const hw = 0.38;
+  for (const y of grid(-2.5, 2.3, step)) {
+    for (const z of grid(-1.5, 1.5, step)) {
+      for (const x of grid(-hw, hw, step)) {
+        const skin = Math.abs(z) > 1.5 - step * 0.6 || y > 2.3 - step * 0.6 || y < -2.5 + step * 0.6;
+        if (skin) push(x, y, z);
+      }
+    }
+    // the lit seams down the front
+    for (const side of [-1, 1]) push(side * (hw + 0.04), y, 1.45, 1);
+  }
+
+  // round stand
+  for (const x of grid(-1.2, 1.2, step)) {
+    for (const z of grid(-1.2, 1.2, step)) {
+      if (Math.hypot(x, z) < 1.15) push(x, -2.78, z);
+    }
+  }
+
+  return transform(out, { rx: -0.06, ry: -0.95, rz: 0, k: 0.74 });
 }
 
 /**
@@ -414,7 +409,7 @@ function pack(voxels: Voxel[], count: number, seed: number): Float32Array {
 export function buildFormations(quality: Quality, options: { rates: number[]; seats: number }) {
   const step = quality === 'high' ? 0.2 : 0.3;
   const shapes = [
-    controller(step),
+    consoleShape(step),
     bays(step),
     tunnel(quality),
     rates(step, options.rates),

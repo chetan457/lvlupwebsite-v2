@@ -335,6 +335,88 @@ def build_controller(_args):
     return parts, []
 
 
+# The console standing on its round base: a gloss-black core between two white
+# wings that flare at the top and pinch at the waist, blue light in the seams.
+# Generic on purpose: no logo, no symbols — a silhouette anyone reads as "the
+# console" without copying anyone's artwork. formations.ts mirrors these numbers.
+CONSOLE = {
+    'core': (0.76, 4.9, 3.0),   # width (x), height (y), depth (z)
+    'core_y': -0.1,
+    'wing_x': 0.56,             # wing centre, each side
+    'wing_t': 0.07,             # half thickness before the bevel
+    'tilt': 0.045,              # wings lean out toward the top
+    'base_y': -2.78,
+}
+
+
+def wing_outline():
+    """The wing in (depth, height); depth runs back (-) to front (+)."""
+    return [
+        ((-1.55, 2.75), (-0.5, 2.86), (0.5, 2.86), (1.55, 2.75)),
+        ((1.55, 2.75), (1.76, 2.74), (1.86, 2.6), (1.85, 2.35)),
+        ((1.85, 2.35), (1.8, 0.6), (1.4, -0.8), (1.45, -2.2)),
+        ((1.45, -2.2), (1.47, -2.45), (1.4, -2.6), (1.2, -2.6)),
+        ((1.2, -2.6), (0.4, -2.6), (-0.4, -2.6), (-1.2, -2.6)),
+        ((-1.2, -2.6), (-1.4, -2.6), (-1.47, -2.45), (-1.45, -2.2)),
+        ((-1.45, -2.2), (-1.4, -0.8), (-1.8, 0.6), (-1.85, 2.35)),
+        ((-1.85, 2.35), (-1.86, 2.6), (-1.76, 2.74), (-1.55, 2.75)),
+    ]
+
+
+def build_console(_args):
+    m = {
+        'panel': material('panel', '#e9ecf0', roughness=0.38, coat=0.6, coat_roughness=0.12),
+        'shell': material('shell', '#0b0d11', roughness=0.55, coat=0.3, coat_roughness=0.4),
+        'trim': material('trim', '#0c0f13', roughness=0.27, coat=1.0, coat_roughness=0.1),
+        'glow': material('glow', emission=ACCENT, strength=3.0),
+        'seam': material('seam', '#030405', roughness=0.7),
+    }
+    c = CONSOLE
+    w, h, d = c['core']
+    parts = []
+
+    # the gloss core
+    parts.append(box('core', w, h, d, 0.08, 4, m['trim'], (0, c['core_y'], 0)))
+
+    # vent fins along the top of the core, sunk between the wings
+    top = c['core_y'] + h / 2
+    for i in range(13):
+        z = -1.32 + i * 0.22
+        parts.append(box(f'fin{i}', w - 0.12, 0.06, 0.08, 0.02, 2, m['seam'], (0, top + 0.02, z)))
+
+    # front face: two ports, a disc slot and the light seams either side
+    front = d / 2
+    for i, x in enumerate([-0.14, 0.14]):
+        parts.append(box(f'port{i}', 0.16, 0.07, 0.04, 0.015, 2, m['seam'], (x, -2.05, front + 0.005)))
+    parts.append(box('slot', 0.05, 2.2, 0.03, 0.02, 2, m['seam'], (0.2, 0.6, front + 0.005)))
+    for side in (-1, 1):
+        parts.append(box(f'light{side}', 0.035, 4.3, 0.035, 0.015, 2, m['glow'],
+                         (side * (w / 2 + 0.04), c['core_y'] + 0.1, front - 0.06)))
+
+    # the wings
+    for side in (-1, 1):
+        # outline drawn in (depth, height); local x = -depth because the curve is
+        # turned a quarter about Y, which takes local (x, y, z) to world (z, y, -x)
+        outline = [tuple((-px, py) for px, py in seg) for seg in wing_outline()]
+        curve = bezier_path(f'wing{side}', outline)
+        curve.fill_mode = 'BOTH'
+        curve.extrude = c['wing_t']
+        curve.bevel_depth = 0.06
+        curve.bevel_resolution = 6
+        curve.resolution_u = 32
+        o = curve_object(f'wing{side}', curve, m['panel'])
+        o.rotation_mode = 'XYZ'  # quarter turn about Y first, then the outward lean about Z
+        o.rotation_euler = (0, math.pi / 2, -side * c['tilt'])
+        o.location = (side * c['wing_x'], 0, 0)
+        parts.append(o)
+
+    # round stand
+    parts.append(cylinder_y('stand', 1.15, 0.1, 96, m['shell'], (0, c['base_y'], 0), edge=0.03))
+    parts.append(cylinder_y('neck', 0.5, 0.12, 64, m['seam'], (0, c['base_y'] + 0.1, 0), edge=0.02))
+
+    return parts, []
+
+
 # three bays, three screens — the room has no fourth
 SCREENS = [(-3.05, 0.9, 2.7, 1.6), (0, 1.15, 3.0, 1.8), (3.05, 0.9, 2.7, 1.6)]
 
@@ -465,6 +547,7 @@ def build_pin(_args):
 BUILDERS = {
     # name: (builder, occlusion reach in world units)
     'controller': (build_controller, 0.6),
+    'console': (build_console, 0.6),
     'bays': (build_bays, 0.8),
     'rates': (build_rates, 0.6),
     'trophy': (build_trophy, 0.7),
@@ -585,7 +668,7 @@ def render_preview(name, args):
 # Models that also ship as a still image, for visitors who get no WebGL scene.
 # Rotation is the same baked pose models.ts gives the live model.
 STILLS = {
-    'controller': {'rotation': (-0.42, -0.5, 0.1)},
+    'console': {'rotation': (-0.06, -0.95, 0.0), 'size': (1000, 1250), 'distance': 10},
 }
 
 
@@ -601,7 +684,7 @@ def render_still(name, objects, args):
 
     camera = bpy.data.objects.new('still_camera', bpy.data.cameras.new('still_camera'))
     scene.collection.objects.link(camera)
-    camera.location = (0, 0, 11)
+    camera.location = (0, 0, STILLS[name].get('distance', 11))
     camera.data.lens = 50
     scene.camera = camera
 
@@ -625,7 +708,7 @@ def render_still(name, objects, args):
     key.data.size = 4
 
     scene.render.film_transparent = True
-    scene.render.resolution_x, scene.render.resolution_y = 1600, 1000
+    scene.render.resolution_x, scene.render.resolution_y = STILLS[name].get('size', (1600, 1000))
     scene.cycles.samples = 128
     scene.cycles.use_denoising = True
     scene.render.image_settings.file_format = 'WEBP'

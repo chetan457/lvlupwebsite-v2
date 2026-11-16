@@ -233,7 +233,7 @@ type Pose = { x: number; y: number; z: number; lookY: number; fov: number };
  * crowded. The tunnel's entry is empty because flight takes over there.
  */
 const POSES: Pose[] = [
-  { x: -0.6, y: -0.6, z: 0.8, lookY: 0.2, fov: 0 }, // controller: slightly low, so it reads heroic
+  { x: -0.6, y: -0.6, z: 0.8, lookY: 0.2, fov: 0 }, // console: slightly low, so it reads heroic
   { x: 0.4, y: 1.1, z: 0.3, lookY: -0.3, fov: 0 }, // bays: from above, looking down over the couch
   { x: 0, y: 0, z: 0, lookY: 0, fov: 0 }, // tunnel
   { x: -0.7, y: -0.7, z: 0, lookY: 0.2, fov: 1 }, // rates: low, so the pillars tower

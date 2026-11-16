@@ -584,6 +584,8 @@ const TUNING: Record<
   { env?: number; specular?: number; tint?: number; wear?: 'base' | 'coat' | 'both'; depthWrite?: boolean }
 > = {
   shell: { env: 0.45, wear: 'coat' },
+  // the console's white wings: enough studio to read glossy, not so much they blow out
+  panel: { env: 0.2, tint: 0.5, wear: 'coat' },
   trim: { env: 0.6, wear: 'both' },
   // baked occlusion lets the gold take less studio before it reads as polished
   gold: { env: 0.3, wear: 'both' },
@@ -772,12 +774,13 @@ function canvasTexture(
   return texture;
 }
 
-// --- 1. controller ------------------------------------------------------------
+// --- 1. console ---------------------------------------------------------------
 
-function controller(ctx: Ctx): HeroModel {
+/** The console standing on its base, turned so a wing and the lit front both show. */
+function consoleModel(ctx: Ctx): HeroModel {
   const inner = new THREE.Group();
-  const model = wrap(ctx, inner, { rx: -0.42, ry: -0.5, rz: 0.1, k: 0.8 });
-  deferLoad(model, ctx, 'controller', (scene) => {
+  const model = wrap(ctx, inner, { rx: -0.06, ry: -0.95, rz: 0, k: 0.82 });
+  deferLoad(model, ctx, 'console', (scene) => {
     inner.add(scene);
     model.ready = true;
   });
@@ -1184,7 +1187,7 @@ export function createModels(palette: Palette, options: { rates: number[]; quali
   const build = () => context(palette, surface, redraws, state, dust);
 
   const models: (HeroModel | null)[] = new Array(FORMATION_COUNT).fill(null);
-  models[0] = controller(build());
+  models[0] = consoleModel(build());
   models[1] = bays(build());
   models[3] = ratePillars(build(), options.rates);
   models[4] = trophy(build());

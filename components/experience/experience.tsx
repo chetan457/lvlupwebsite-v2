@@ -79,21 +79,21 @@ export function Experience() {
         <div className="stage-grid absolute inset-x-[-50%] bottom-0 h-[55%]" />
         {/*
           No scene at all (reduced motion, no WebGL, save-data): the opening chapter
-          still shows its pad, as a still rendered by the same Blender build.
+          still shows its console, as a still rendered by the same Blender build.
         */}
         {status === 'off' ? (
           <div
-            className={`absolute left-1/2 top-[24%] w-[88vw] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-700 lg:left-auto lg:right-[3%] lg:top-1/2 lg:w-[min(50vw,56rem)] lg:translate-x-0 ${
+            className={`absolute left-1/2 top-[26%] w-[52vw] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-700 lg:left-auto lg:right-[10%] lg:top-1/2 lg:w-[min(28vw,30rem)] lg:translate-x-0 ${
               chapter === 0 ? 'opacity-100' : 'opacity-0'
             }`}
           >
-            {/* the same glow the scene gives the pad, painted: a pool behind it and a halo on its edge */}
+            {/* the same glow the scene gives the console, painted: a pool behind it and a halo on its edge */}
             <div className="stage-still-glow absolute inset-[-12%]" />
             <img
-              src="/stills/controller.webp"
+              src="/stills/console.webp"
               alt=""
-              width={1600}
-              height={1000}
+              width={1000}
+              height={1250}
               decoding="async"
               className="relative w-full [filter:drop-shadow(0_0_18px_rgb(var(--ch-accent)/0.35))_drop-shadow(0_0_60px_rgb(var(--ch-lamp)/0.25))]"
             />
