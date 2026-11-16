@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    // Hostinger's shared build box caps processes per account: Next's default of one
+    // worker per core (17 there) dies with "spawn node EAGAIN" while collecting page data
+    cpus: 1,
+  },
   async headers() {
     // models, lighting, stills and covers are not content-hashed, so a day fresh and a
     // week stale-while-revalidate: repeat visits skip the downloads, a rebuild still lands
