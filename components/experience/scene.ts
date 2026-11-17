@@ -528,6 +528,11 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
   let lensOff = false;
   let dustThinned = false;
   let bootRamp = 0;
+  // How close the scroll gets to a chapter before its model is fetched and built. Desktop
+  // reaches a whole chapter ahead. Phones build only the model on screen at the start
+  // (the next one would be a decode and a build in the same busy second) and download
+  // the next chapter's file in idle time after the first frame instead; see `first` below.
+  const requestReach = quality === 'high' ? 1.1 : 0.6;
 
   const tick = () => {
     raf = requestAnimationFrame(tick);
@@ -561,7 +566,7 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     bootRamp = bootDone.get() ? Math.min(1, bootRamp + dt / 2.4) : 0;
     kit.models.forEach((model, i) => {
       // models load as the scroll approaches their chapter, not all five on page load
-      if (model && Math.abs(shown.progress - i) < 1.1) model.request();
+      if (model && Math.abs(shown.progress - i) < requestReach) model.request();
       // a model that has not loaded (or failed to) leaves its chapter to the voxels
       const presence = model?.ready
         ? (1 - THREE.MathUtils.smoothstep(Math.abs(shown.progress - i), 0.04, 0.45)) * bootRamp
@@ -627,6 +632,12 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
       first = false;
       sceneStatus.set('ready');
       onFirstFrame();
+      if (quality === 'low') {
+        const next = kit.models[1];
+        const prefetch = () => !disposed && next?.prefetch();
+        if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(prefetch, { timeout: 3000 });
+        else window.setTimeout(prefetch, 1000);
+      }
     }
 
     if (debug) {

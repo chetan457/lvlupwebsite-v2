@@ -62,6 +62,11 @@ export type HeroModel = {
   ready: boolean;
   /** Starts fetching the .glb the first time it is called; cheap to call every frame. */
   request: () => void;
+  /**
+   * Downloads the .glb into the HTTP cache without decoding or building anything, so a
+   * later `request` is quick. Once per model; never fails loudly.
+   */
+  prefetch: () => void;
   update: (elapsed: number) => void;
 };
 
@@ -561,6 +566,7 @@ function wrap(
     transition: ctx.transition,
     ready: false,
     request: () => {},
+    prefetch: () => {},
     update(elapsed) {
       // last frame's matrix: a frame of lag in the sweep is invisible
       ctx.transition.space.value.copy(inner.matrixWorld).invert();
@@ -657,10 +663,20 @@ function load(ctx: Ctx, name: string, onLoad: (scene: THREE.Group) => void) {
 /** Arms a model's `request`, so its .glb is only fetched once the scroll gets near its chapter. */
 function deferLoad(model: HeroModel, ctx: Ctx, name: string, onLoad: (scene: THREE.Group) => void) {
   let requested = false;
+  let prefetched = false;
   model.request = () => {
     if (requested) return;
     requested = true;
     load(ctx, name, onLoad);
+  };
+  // /models is served with max-age (next.config.mjs), so the loader's own fetch of the
+  // same URL is answered from the cache
+  model.prefetch = () => {
+    if (prefetched || requested) return;
+    prefetched = true;
+    fetch(`/models/${name}.glb`).catch(() => {
+      // the loader will simply fetch it again when the scroll gets there
+    });
   };
 }
 
