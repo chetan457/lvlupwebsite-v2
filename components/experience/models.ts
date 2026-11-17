@@ -698,9 +698,12 @@ function deferLoad(model: HeroModel, ctx: Ctx, name: string, onLoad: (scene: THR
   model.prefetch = () => {
     if (prefetched || requested) return;
     prefetched = true;
-    fetch(`/models/${name}.glb`).catch(() => {
-      // the loader will simply fetch it again when the scroll gets there
-    });
+    // read the body: an unread response may be dropped before it is fully cached
+    fetch(`/models/${name}.glb`)
+      .then((response) => response.arrayBuffer())
+      .catch(() => {
+        // the loader will simply fetch it again when the scroll gets there
+      });
   };
 }
 

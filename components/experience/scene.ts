@@ -431,11 +431,24 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     const materials = new Set<THREE.Material>();
     const previous = renderer.getRenderTarget();
     renderer.setRenderTarget(warmTarget);
+    // compile() only walks visible objects, and everything handed to warm() is hidden on
+    // purpose until it is linked — so show the whole subtree for the call, then put every
+    // flag back exactly as it was
+    const hidden: THREE.Object3D[] = [];
+    for (const object of objects) {
+      object.traverse((child) => {
+        if (!child.visible) {
+          hidden.push(child);
+          child.visible = true;
+        }
+      });
+    }
     try {
       for (const object of objects) renderer.compile(object, camera, scene).forEach((m) => materials.add(m));
     } catch {
       // a driver that cannot precompile still renders; it just stutters once
     } finally {
+      for (const child of hidden) child.visible = false;
       renderer.setRenderTarget(previous);
     }
     // With KHR_parallel_shader_compile the GPU links in the background and isReady says

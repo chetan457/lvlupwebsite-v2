@@ -70,6 +70,9 @@ const LOW_TIER_IDLE_START = 6000;
  */
 const LOW_TIER_MEDIA = '(max-width: 1023.98px), (pointer: coarse)';
 const STILL = '/stills/console.webp';
+/** Desktop with a scene coming: the still is hidden there, so give it nothing to download. */
+const DESKTOP_MEDIA = '(min-width: 1024px) and (pointer: fine)';
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 export function Experience() {
   // on a phone the still is the largest thing on the first screen, so fetch it with the HTML
@@ -165,13 +168,17 @@ export function Experience() {
         >
           {/* the same glow the scene gives the console, painted: a pool behind it and a halo on its edge */}
           <div className="stage-still-glow absolute inset-[-12%]" />
-          <img
-            src={STILL}
-            alt=""
-            width={1000}
-            height={1250}
-            className="relative w-full [filter:drop-shadow(0_0_18px_rgb(var(--ch-accent)/0.35))_drop-shadow(0_0_60px_rgb(var(--ch-lamp)/0.25))]"
-          />
+          {/* while a scene is coming, desktop gets a blank source so the hidden still is never fetched */}
+          <picture>
+            {status === 'off' ? null : <source media={DESKTOP_MEDIA} srcSet={BLANK} />}
+            <img
+              src={STILL}
+              alt=""
+              width={1000}
+              height={1250}
+              className="relative w-full [filter:drop-shadow(0_0_18px_rgb(var(--ch-accent)/0.35))_drop-shadow(0_0_60px_rgb(var(--ch-lamp)/0.25))]"
+            />
+          </picture>
         </div>
       </div>
       <div data-stage-layer className="absolute inset-0">
