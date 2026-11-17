@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * It answers one question — is there a session — and nothing more. It does not
  * read `staff`: that would cost a database round trip on every request, and a
  * middleware check can be bypassed by anything that renders outside it. The
- * layout and pages re-check with `pageStaff()` and actions with `currentStaff()`, the real gate; this
+ * layout and pages re-check with `pageStaffWith()` and actions with `currentStaff()`, the real gate; this
  * just saves a signed-out visitor from loading a screen they cannot use.
  *
  * Env is read straight off process.env rather than through lib/supabase/server,

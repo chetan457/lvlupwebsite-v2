@@ -43,7 +43,7 @@ async function activeStaff(supabase: Awaited<ReturnType<typeof supabaseServer>>,
  *
  * Asks the Auth server (`getUser()`), so a session revoked elsewhere is refused
  * here even if its access token has not expired yet. This is the gate every
- * Server Action passes before it writes; pages use `pageStaff()` instead.
+ * Server Action passes before it writes; pages use `pageStaffWith()` instead.
  */
 export const currentStaff = cache(async (): Promise<Staff | null> => {
   if (!supabaseConfigured) return null;
@@ -85,12 +85,38 @@ export const pageUserId = cache(async (): Promise<string | null> => {
   }
 });
 
-/** The staff member a page renders for: `pageUserId()` plus their active `staff` row. */
-export const pageStaff = cache(async (): Promise<Staff | null> => {
+/** The active staff row for a user id, once per request. */
+const staffById = cache(async (id: string): Promise<Staff | null> => activeStaff(await supabaseServer(), id));
+
+/**
+ * The signed-in staff member and a page's reads, fetched side by side.
+ *
+ * Once the user id is known (locally, from the token), the `staff` lookup and
+ * the page's own queries go out together: one round trip instead of two. That
+ * is safe because RLS (`is_staff()`, which needs an active row) returns nothing
+ * to anyone else — and the staff row is still checked first: when it is null
+ * the reads are thrown away unseen (a failed read included) and the caller
+ * redirects before rendering anything.
+ *
+ * Pages only. Server Actions keep `currentStaff()` and finish it before any write.
+ */
+export async function pageStaffWith<T>(
+  reads: () => Promise<T>,
+): Promise<{ staff: Staff; data: T } | null> {
   const id = await pageUserId();
   if (!id) return null;
-  return activeStaff(await supabaseServer(), id);
-});
+
+  const pending = reads();
+  // a non-staff session's read may fail; it must not surface as an unhandled rejection.
+  // (Middleware has already refreshed an expired token for this request, so these
+  // concurrent clients should never each try a refresh — if the idle-tab test
+  // signs someone out, look here first.)
+  pending.catch(() => {});
+  const staff = await staffById(id);
+  if (!staff) return null;
+
+  return { staff, data: await pending };
+}
 
 /** Every bookable station with whatever is playing on it. One query, so the floor cannot show a stale pairing. */
 export async function getFloor(): Promise<FloorStation[]> {

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { RateCard } from '@/components/admin/rate-card';
 import { AddStationForm } from '@/components/admin/add-station-form';
 import { StationAdminRow } from '@/components/admin/station-admin-row';
-import { pageStaff, getAllStations, getStationKinds } from '@/lib/admin/queries';
+import { getAllStations, getStationKinds, pageStaffWith } from '@/lib/admin/queries';
 
 /**
  * The stations screen: what exists, what it costs, and what is retired.
@@ -15,10 +15,12 @@ import { pageStaff, getAllStations, getStationKinds } from '@/lib/admin/queries'
 export const dynamic = 'force-dynamic';
 
 export default async function StationsPage() {
-  const staff = await pageStaff();
-  if (!staff) redirect('/admin/login');
-
-  const [stations, kinds] = await Promise.all([getAllStations(), getStationKinds()]);
+  const page = await pageStaffWith(() => Promise.all([getAllStations(), getStationKinds()]));
+  if (!page) redirect('/admin/login');
+  const {
+    staff,
+    data: [stations, kinds],
+  } = page;
   const canEdit = staff.role === 'owner' || staff.role === 'manager';
 
   return (

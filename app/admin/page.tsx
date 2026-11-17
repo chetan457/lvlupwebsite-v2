@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { FloorLive } from '@/components/admin/floor-live';
 import { SummaryStrip } from '@/components/admin/summary-strip';
 import { clockTime } from '@/lib/admin/billing';
-import { pageStaff, getDaySessions, getFloor, totalsFor } from '@/lib/admin/queries';
+import { getDaySessions, getFloor, pageStaffWith, totalsFor } from '@/lib/admin/queries';
 
 export const metadata = { title: 'Floor' };
 
@@ -13,10 +13,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function FloorPage() {
   // the guard lives here, not in the layout: the layout also wraps /admin/login
-  const staff = await pageStaff();
-  if (!staff) redirect('/admin/login');
-
-  const [stations, day] = await Promise.all([getFloor(), getDaySessions()]);
+  const page = await pageStaffWith(() => Promise.all([getFloor(), getDaySessions()]));
+  if (!page) redirect('/admin/login');
+  const {
+    staff,
+    data: [stations, day],
+  } = page;
   const totals = totalsFor(day);
   const inPlay = stations.filter((station) => station.open_session).length;
   const renderedAt = Date.now();
