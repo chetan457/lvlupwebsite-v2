@@ -53,12 +53,16 @@ export function FloorLive({ stations, serverNow }: Props) {
 
   useEffect(() => {
     const supabase = supabaseBrowser();
+    // set first thing on unmount: removeChannel() fires the subscribe callback with
+    // CLOSED, which would otherwise restart the fallback poll on whatever screen is next
+    let disposed = false;
 
-    // --- refresh, throttled: the first change refreshes at once, a burst after it
+    // --- refresh, throttled (deliberately a throttle, not a debounce): the first change refreshes at once, a burst after it
     // collapses into one trailing refresh REFRESH_GAP_MS later
     let lastRefresh = 0;
     let pendingRefresh = 0;
     const refreshNow = () => {
+      if (disposed) return;
       if (pendingRefresh) window.clearTimeout(pendingRefresh);
       pendingRefresh = 0;
       lastRefresh = Date.now();
@@ -66,7 +70,7 @@ export function FloorLive({ stations, serverNow }: Props) {
     };
     const requestRefresh = () => {
       // a hidden tab skips it: becoming visible refreshes anyway
-      if (document.hidden || pendingRefresh) return;
+      if (disposed || document.hidden || pendingRefresh) return;
       const wait = Math.max(0, lastRefresh + REFRESH_GAP_MS - Date.now());
       pendingRefresh = window.setTimeout(refreshNow, wait);
     };
@@ -76,7 +80,7 @@ export function FloorLive({ stations, serverNow }: Props) {
     let needPoll = !supabase;
     let poll = 0;
     const syncPolling = () => {
-      const want = needPoll && !document.hidden;
+      const want = !disposed && needPoll && !document.hidden;
       if (want && !poll) poll = window.setInterval(requestRefresh, POLL_MS);
       if (!want && poll) {
         window.clearInterval(poll);
@@ -101,13 +105,14 @@ export function FloorLive({ stations, serverNow }: Props) {
       ?.channel('floor')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'play_sessions' }, requestRefresh)
       .subscribe((status: string) => {
+        if (disposed) return;
         needPoll = status !== 'SUBSCRIBED';
         syncPolling();
       });
 
     return () => {
+      disposed = true;
       document.removeEventListener('visibilitychange', onVisibility);
-      needPoll = false;
       syncPolling();
       if (pendingRefresh) window.clearTimeout(pendingRefresh);
       if (supabase && channel) void supabase.removeChannel(channel);
