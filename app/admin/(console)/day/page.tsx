@@ -55,7 +55,7 @@ export default async function DaySheetPage({
   // a hand-typed or stale ?day= falls back to today rather than querying nonsense
   const day = requested && isRealDay(requested) ? requested : today;
 
-  const page = await pageStaffWith(() => Promise.all([getDaySessions(day), getClosure(day)]));
+  const page = await pageStaffWith('day', () => Promise.all([getDaySessions(day), getClosure(day)]));
   if (!page) redirect('/admin/login');
   const {
     staff,

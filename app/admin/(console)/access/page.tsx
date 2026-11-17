@@ -39,7 +39,7 @@ const joinedDate = (value: string) =>
   });
 
 export default async function AccessPage() {
-  const page = await pageStaffWith(getStaffRoster);
+  const page = await pageStaffWith('access', getStaffRoster);
   if (!page) redirect('/admin/login');
   const { staff, data: roster } = page;
 

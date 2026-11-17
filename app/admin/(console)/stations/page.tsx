@@ -15,7 +15,7 @@ import { getAllStations, getStationKinds, pageStaffWith } from '@/lib/admin/quer
 export const dynamic = 'force-dynamic';
 
 export default async function StationsPage() {
-  const page = await pageStaffWith(() => Promise.all([getAllStations(), getStationKinds()]));
+  const page = await pageStaffWith('stations', () => Promise.all([getAllStations(), getStationKinds()]));
   if (!page) redirect('/admin/login');
   const {
     staff,

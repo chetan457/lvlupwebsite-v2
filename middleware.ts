@@ -47,9 +47,16 @@ export async function middleware(request: NextRequest) {
 
   // always called, never conditionally: this is what rotates the refresh token.
   // Drop it and everyone gets signed out mid-shift when the access token expires.
+  const started = process.env.NODE_ENV === 'development' ? performance.now() : 0;
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // dev-only, like lib/admin/timing.ts: the one sequential trip before every page
+  if (process.env.NODE_ENV === 'development') {
+    console.log(
+      `[admin timing] middleware ${request.method} ${request.nextUrl.pathname}: getUser ${Math.round(performance.now() - started)}ms`,
+    );
+  }
 
   const { pathname, search } = request.nextUrl;
 

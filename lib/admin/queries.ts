@@ -5,6 +5,7 @@ import { cache } from 'react';
 import { supabaseConfigured, supabaseServer } from '@/lib/supabase/server';
 
 import { businessDay } from './billing';
+import { devTiming, logTiming, since } from './timing';
 import type { DayClosure, DayTotals, FloorStation, PlaySession, RateTier, Staff, StationKind } from './types';
 
 /**
@@ -101,10 +102,16 @@ const staffById = cache(async (id: string): Promise<Staff | null> => activeStaff
  * Pages only. Server Actions keep `currentStaff()` and finish it before any write.
  */
 export async function pageStaffWith<T>(
+  screen: string,
   reads: () => Promise<T>,
 ): Promise<{ staff: Staff; data: T } | null> {
+  const start = devTiming ? performance.now() : 0;
   const id = await pageUserId();
-  if (!id) return null;
+  const claimsMs = devTiming ? since(start) : 0;
+  if (!id) {
+    logTiming(screen, { 'getClaims (local)': claimsMs, total: claimsMs });
+    return null;
+  }
 
   const pending = reads();
   // a non-staff session's read may fail; it must not surface as an unhandled rejection.
@@ -113,9 +120,17 @@ export async function pageStaffWith<T>(
   // signs someone out, look here first.)
   pending.catch(() => {});
   const staff = await staffById(id);
-  if (!staff) return null;
+  if (!staff) {
+    logTiming(screen, { 'getClaims (local)': claimsMs, 'staff (no active row)': since(start) - claimsMs });
+    return null;
+  }
 
-  return { staff, data: await pending };
+  const data = await pending;
+  if (devTiming) {
+    const total = since(start);
+    logTiming(screen, { 'getClaims (local)': claimsMs, 'staff + reads (1 parallel trip)': total - claimsMs, total });
+  }
+  return { staff, data };
 }
 
 /** Every bookable station with whatever is playing on it. One query, so the floor cannot show a stale pairing. */

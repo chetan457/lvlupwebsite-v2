@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function FloorPage() {
   // the guard lives here, not in the layout: the layout also wraps /admin/login
-  const page = await pageStaffWith(() => Promise.all([getFloor(), getDaySessions()]));
+  const page = await pageStaffWith('floor', () => Promise.all([getFloor(), getDaySessions()]));
   if (!page) redirect('/admin/login');
   const {
     staff,
