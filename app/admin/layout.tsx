@@ -8,7 +8,7 @@ import { AdminNav } from '@/components/admin/admin-nav';
  * Deliberately *not* where the auth guard lives. This layout wraps
  * app/admin/login/page.tsx too, so redirecting from here on a null staff row
  * would send the login screen to itself forever. Every console page does its
- * own `pageStaffWith()` check instead (see app/admin/page.tsx); this file is
+ * own `pageStaffWith()` check instead (see app/admin/(console)/page.tsx); this file is
  * only chrome. The marketing chrome is not here to fight: the public site sits
  * in its own route group, so none of it is loaded on these routes.
  */
