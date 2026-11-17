@@ -2,9 +2,9 @@
  * The business details, feeding the visible pages, the structured data and the
  * sitemap from one place so nothing can drift out of sync.
  *
- * Confirmed: the address, the phone number and the domain. Still to confirm
- * before the site is indexed, each marked TO CONFIRM below: the email, the
- * Instagram handle and the Maps pin — and the opening hours in content/hours.ts,
+ * Confirmed: the address, the phone number, the domain and the Instagram handle.
+ * Still to confirm before the site is indexed, each marked TO CONFIRM below: the
+ * email and the Maps pin — and the opening hours in content/hours.ts,
  * which are still guesses. A placeholder is left as an obvious placeholder
  * rather than dressed up as real.
  */
@@ -57,9 +57,9 @@ export const site = {
   geo: null as { lat: number; lng: number } | null,
   mapsUrl: 'https://maps.google.com/?q=Nadiad+Nexus-I%2C+Nadiad%2C+Gujarat',
 
-  /** TO CONFIRM: that this handle is the lounge's own. */
-  instagram: 'https://instagram.com/lvlup.lounge',
-  instagramHandle: '@lvlup.lounge',
+  /** Confirmed by the owner, 2026-11-18. */
+  instagram: 'https://www.instagram.com/lvluplounge41/',
+  instagramHandle: '@lvluplounge41',
 
   /**
    * Null until Google shows one. It used to read 4.7 from 23 reviews, which was
