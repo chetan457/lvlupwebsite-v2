@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import { supabaseConfigured, supabaseServer } from '@/lib/supabase/server';
 
 import { businessDay } from './billing';
@@ -23,6 +25,13 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
 /** A closed session with the station it was played on, for the day sheet. */
 export type DaySession = PlaySession & { station_name: string };
 
+/*
+ * Who-is-signed-in lookups are wrapped in React `cache()`: memoised for one
+ * server request only, so a second call in the same render costs nothing. Never
+ * 'use cache', unstable_cache or any other cross-request cache on these or on
+ * any admin query — that would hand one person's staff row or data to another.
+ */
+
 /** The staff row for a signed-in user, or null when it is missing or switched off. */
 async function activeStaff(supabase: Awaited<ReturnType<typeof supabaseServer>>, id: string): Promise<Staff | null> {
   const { data } = await supabase.from('staff').select('*').eq('id', id).maybeSingle();
@@ -36,7 +45,7 @@ async function activeStaff(supabase: Awaited<ReturnType<typeof supabaseServer>>,
  * here even if its access token has not expired yet. This is the gate every
  * Server Action passes before it writes; pages use `pageStaff()` instead.
  */
-export async function currentStaff(): Promise<Staff | null> {
+export const currentStaff = cache(async (): Promise<Staff | null> => {
   if (!supabaseConfigured) return null;
   const supabase = await supabaseServer();
 
@@ -44,7 +53,7 @@ export async function currentStaff(): Promise<Staff | null> {
   if (!auth.user) return null;
 
   return activeStaff(supabase, auth.user.id);
-}
+});
 
 /**
  * The signed-in user's id, from the access token, verified on this server.
@@ -63,7 +72,7 @@ export async function currentStaff(): Promise<Staff | null> {
  *
  * Fails closed: any error, an unverifiable token or a missing `sub` is "nobody".
  */
-export async function pageUserId(): Promise<string | null> {
+export const pageUserId = cache(async (): Promise<string | null> => {
   if (!supabaseConfigured) return null;
   try {
     const supabase = await supabaseServer();
@@ -74,14 +83,14 @@ export async function pageUserId(): Promise<string | null> {
   } catch {
     return null;
   }
-}
+});
 
 /** The staff member a page renders for: `pageUserId()` plus their active `staff` row. */
-export async function pageStaff(): Promise<Staff | null> {
+export const pageStaff = cache(async (): Promise<Staff | null> => {
   const id = await pageUserId();
   if (!id) return null;
   return activeStaff(await supabaseServer(), id);
-}
+});
 
 /** Every bookable station with whatever is playing on it. One query, so the floor cannot show a stale pairing. */
 export async function getFloor(): Promise<FloorStation[]> {
