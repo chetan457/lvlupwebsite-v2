@@ -49,6 +49,12 @@ export function signal<T>(initial: T): Signal<T> {
 /** 'off' covers every reason the scene will never draw: reduced motion, no WebGL2, save-data. */
 export const sceneStatus = signal<'pending' | 'ready' | 'off'>('pending');
 
+/**
+ * True once a phone's scene has been deferred to the visitor's first interaction (a
+ * still holds the stage meanwhile), so the boot screen never holds for that scene.
+ */
+export const sceneWaiting = signal(false);
+
 /** Index of the chapter covering the middle of the viewport. */
 export const activeChapter = signal(0);
 

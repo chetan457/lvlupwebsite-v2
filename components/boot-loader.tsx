@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { site } from '@/content/site';
-import { bootDone, sceneStatus } from '@/lib/experience-store';
+import { bootDone, sceneStatus, sceneWaiting } from '@/lib/experience-store';
 
 const RING = 40;
 
@@ -59,7 +59,9 @@ export function BootLoader() {
       // ten seconds to count to 100 while the page sat ready underneath
       const dt = Math.min(now - previous, 250);
       previous = now;
-      const sceneSettled = !hasStage || sceneStatus.get() !== 'pending' || elapsed > (small ? 1600 : 2200);
+      // a phone's scene waits for the first interaction, behind a still: nothing to hold for
+      const sceneSettled =
+        !hasStage || sceneStatus.get() !== 'pending' || sceneWaiting.get() || elapsed > (small ? 1600 : 2200);
       const cap = fontsReady ? (sceneSettled ? 100 : 86) : 60;
       const want = Math.min(cap, (elapsed / minimum) * 100);
 

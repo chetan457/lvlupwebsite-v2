@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { preload } from 'react-dom';
 
-import { activeChapter, sceneStatus } from '@/lib/experience-store';
+import { activeChapter, sceneStatus, sceneWaiting } from '@/lib/experience-store';
 import { useSignal } from '@/lib/use-signal';
 
 import type { Quality } from './formations';
@@ -18,7 +18,8 @@ import type { Quality } from './formations';
  * because nothing the scene draws carries information.
  *
  * Unlike v1, phones get the scene too: it is the point of this version. They
- * get the low tier — coarser voxels, no bloom, a lower pixel ratio.
+ * get the low tier — coarser voxels, no bloom, a lower pixel ratio — and it
+ * starts on their first interaction rather than at load, behind a still.
  */
 const ExperienceCanvas = dynamic(() => import('./experience-canvas').then((m) => m.ExperienceCanvas), {
   ssr: false,
@@ -29,16 +30,13 @@ type NavigatorWithHints = Navigator & {
   connection?: { saveData?: boolean };
 };
 
+/** The tier this device would get, before the WebGL2 check (see `hasWebGL2`). */
 function chooseQuality(): Quality | null {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
 
   const nav = navigator as NavigatorWithHints;
   if (nav.connection?.saveData) return null;
   if (typeof nav.deviceMemory === 'number' && nav.deviceMemory < 2) return null;
-
-  const probe = document.createElement('canvas').getContext('webgl2');
-  if (!probe) return null;
-  probe.getExtension('WEBGL_lose_context')?.loseContext();
 
   // Screen size and input only. Core and memory counts are not trusted: Brave and other
   // privacy browsers report randomised values, which put fast laptops on the low tier (no
@@ -48,6 +46,21 @@ function chooseQuality(): Quality | null {
 
   return small ? 'low' : 'high';
 }
+
+/**
+ * Creating a context can block the main thread while the GPU process starts, so a
+ * phone only probes when its scene is about to start, never during load.
+ */
+function hasWebGL2(): boolean {
+  const probe = document.createElement('canvas').getContext('webgl2');
+  if (!probe) return false;
+  probe.getExtension('WEBGL_lose_context')?.loseContext();
+  return true;
+}
+
+/** Phones start the scene on the first of these, or LOW_TIER_IDLE_START ms after load. */
+const WAKE_EVENTS = ['scroll', 'wheel', 'touchstart', 'pointerdown', 'pointermove', 'keydown'] as const;
+const LOW_TIER_IDLE_START = 6000;
 
 /**
  * The low tier, in CSS: the same test as `chooseQuality` (narrow or touch). The
@@ -72,15 +85,63 @@ export function Experience() {
       sceneStatus.set('off');
       return;
     }
-    // Start three.js once the browser is idle, not during first paint: the headline and
-    // copy paint and become interactive first, and the scene fades in behind them.
-    const begin = () => setQuality(chosen);
-    if (typeof window.requestIdleCallback === 'function') {
-      const id = window.requestIdleCallback(begin, { timeout: 1200 });
-      return () => window.cancelIdleCallback(id);
+    if (chosen === 'high') {
+      if (!hasWebGL2()) {
+        sceneStatus.set('off');
+        return;
+      }
+      const begin = () => setQuality(chosen);
+      // Desktop: start three.js once the browser is idle, not during first paint: the
+      // headline and copy paint and become interactive first, and the scene fades in behind them.
+      if (typeof window.requestIdleCallback === 'function') {
+        const id = window.requestIdleCallback(begin, { timeout: 1200 });
+        return () => window.cancelIdleCallback(id);
+      }
+      const timer = window.setTimeout(begin, 300);
+      return () => window.clearTimeout(timer);
     }
-    const timer = window.setTimeout(begin, 300);
-    return () => window.clearTimeout(timer);
+
+    // Phones: setting the scene up is seconds of main-thread work on a mid-range CPU, so
+    // it waits for the visitor — the first scroll, touch, key or pointer move — or for
+    // LOW_TIER_IDLE_START after the page has loaded, whichever comes first. Until then
+    // the still holds the stage and the page is fully usable.
+    sceneWaiting.set(true);
+    const begin = () => {
+      if (hasWebGL2()) setQuality(chosen);
+      else sceneStatus.set('off');
+    };
+    let started = false;
+    let fallback = 0;
+    let cancelBegin = () => {};
+    const start = () => {
+      if (started) return;
+      started = true;
+      cleanup();
+      // after the event's own frame, so the tap or scroll that woke the scene paints first
+      if (typeof window.requestIdleCallback === 'function') {
+        const id = window.requestIdleCallback(begin, { timeout: 250 });
+        cancelBegin = () => window.cancelIdleCallback(id);
+      } else {
+        const id = window.setTimeout(begin, 50);
+        cancelBegin = () => window.clearTimeout(id);
+      }
+    };
+    const armFallback = () => {
+      fallback = window.setTimeout(start, LOW_TIER_IDLE_START);
+    };
+    const cleanup = () => {
+      WAKE_EVENTS.forEach((type) => window.removeEventListener(type, start));
+      window.removeEventListener('load', armFallback);
+      window.clearTimeout(fallback);
+    };
+    WAKE_EVENTS.forEach((type) => window.addEventListener(type, start, { passive: true }));
+    if (document.readyState === 'complete') armFallback();
+    else window.addEventListener('load', armFallback, { once: true });
+
+    return () => {
+      cleanup();
+      cancelBegin();
+    };
   }, []);
 
   return (
