@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { RateCard } from '@/components/admin/rate-card';
 import { AddStationForm } from '@/components/admin/add-station-form';
 import { StationAdminRow } from '@/components/admin/station-admin-row';
-import { currentStaff, getAllStations, getStationKinds } from '@/lib/admin/queries';
+import { pageStaff, getAllStations, getStationKinds } from '@/lib/admin/queries';
 
 /**
  * The stations screen: what exists, what it costs, and what is retired.
@@ -15,7 +15,7 @@ import { currentStaff, getAllStations, getStationKinds } from '@/lib/admin/queri
 export const dynamic = 'force-dynamic';
 
 export default async function StationsPage() {
-  const staff = await currentStaff();
+  const staff = await pageStaff();
   if (!staff) redirect('/admin/login');
 
   const [stations, kinds] = await Promise.all([getAllStations(), getStationKinds()]);

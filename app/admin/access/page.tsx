@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { buttonClass } from '@/components/ui/button';
 import { signOut } from '@/lib/admin/auth';
 import { clockTime } from '@/lib/admin/billing';
-import { currentStaff, getStaffRoster } from '@/lib/admin/queries';
+import { pageStaff, getStaffRoster } from '@/lib/admin/queries';
 import type { StaffRole } from '@/lib/admin/types';
 
 export const metadata: Metadata = { title: 'Access' };
@@ -39,7 +39,7 @@ const joinedDate = (value: string) =>
   });
 
 export default async function AccessPage() {
-  const staff = await currentStaff();
+  const staff = await pageStaff();
   if (!staff) redirect('/admin/login');
 
   const roster = await getStaffRoster();

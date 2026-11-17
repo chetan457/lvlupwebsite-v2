@@ -5,7 +5,7 @@ import { CloseDayForm } from '@/components/admin/close-day-form';
 import { DayTable } from '@/components/admin/day-table';
 import { businessDay, clockTime, rupees } from '@/lib/admin/billing';
 import { ReopenDayForm } from '@/components/admin/reopen-day-form';
-import { currentStaff, getClosure, getDaySessions, totalsFor } from '@/lib/admin/queries';
+import { pageStaff, getClosure, getDaySessions, totalsFor } from '@/lib/admin/queries';
 import type { DayTotals } from '@/lib/admin/types';
 
 /**
@@ -50,7 +50,7 @@ export default async function DaySheetPage({
 }: {
   searchParams: Promise<{ day?: string }>;
 }) {
-  const staff = await currentStaff();
+  const staff = await pageStaff();
   if (!staff) redirect('/admin/login');
 
   const today = businessDay();

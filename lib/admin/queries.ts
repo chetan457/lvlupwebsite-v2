@@ -23,7 +23,19 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
 /** A closed session with the station it was played on, for the day sheet. */
 export type DaySession = PlaySession & { station_name: string };
 
-/** The signed-in staff member, or null when nobody is signed in or the account is switched off. */
+/** The staff row for a signed-in user, or null when it is missing or switched off. */
+async function activeStaff(supabase: Awaited<ReturnType<typeof supabaseServer>>, id: string): Promise<Staff | null> {
+  const { data } = await supabase.from('staff').select('*').eq('id', id).maybeSingle();
+  return data && data.active ? (data as Staff) : null;
+}
+
+/**
+ * The signed-in staff member, or null when nobody is signed in or the account is switched off.
+ *
+ * Asks the Auth server (`getUser()`), so a session revoked elsewhere is refused
+ * here even if its access token has not expired yet. This is the gate every
+ * Server Action passes before it writes; pages use `pageStaff()` instead.
+ */
 export async function currentStaff(): Promise<Staff | null> {
   if (!supabaseConfigured) return null;
   const supabase = await supabaseServer();
@@ -31,8 +43,44 @@ export async function currentStaff(): Promise<Staff | null> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return null;
 
-  const { data } = await supabase.from('staff').select('*').eq('id', auth.user.id).maybeSingle();
-  return data && data.active ? (data as Staff) : null;
+  return activeStaff(supabase, auth.user.id);
+}
+
+/**
+ * The signed-in user's id, from the access token, verified on this server.
+ *
+ * The project signs its tokens with an asymmetric key (ES256), so `getClaims()`
+ * checks the signature locally against the project's public keys, which
+ * auth-js fetches once and keeps for ten minutes per server process — no Auth
+ * round trip per page. With a legacy HS256 secret it would fall back to
+ * `getUser()` and still be correct, just not faster.
+ *
+ * Trade-off, accepted in docs/perf-seo-plan.md §5.1: a token is trusted until
+ * it expires, so a sign-out on another device is enforced by middleware (which
+ * still calls `getUser()` on every /admin request) rather than here. Deactivating
+ * someone still takes effect on the next page load: the `staff` row is always
+ * re-read, and RLS (`is_staff()`) refuses every read for an inactive row.
+ *
+ * Fails closed: any error, an unverifiable token or a missing `sub` is "nobody".
+ */
+export async function pageUserId(): Promise<string | null> {
+  if (!supabaseConfigured) return null;
+  try {
+    const supabase = await supabaseServer();
+    const { data, error } = await supabase.auth.getClaims();
+    if (error || !data) return null;
+    const sub = data.claims.sub;
+    return typeof sub === 'string' && sub ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The staff member a page renders for: `pageUserId()` plus their active `staff` row. */
+export async function pageStaff(): Promise<Staff | null> {
+  const id = await pageUserId();
+  if (!id) return null;
+  return activeStaff(await supabaseServer(), id);
 }
 
 /** Every bookable station with whatever is playing on it. One query, so the floor cannot show a stale pairing. */
