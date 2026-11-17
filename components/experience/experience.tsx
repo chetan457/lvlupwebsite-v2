@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import { preload } from 'react-dom';
 
 import { activeChapter, sceneStatus } from '@/lib/experience-store';
 import { useSignal } from '@/lib/use-signal';
@@ -48,7 +49,19 @@ function chooseQuality(): Quality | null {
   return small ? 'low' : 'high';
 }
 
+/**
+ * The low tier, in CSS: the same test as `chooseQuality` (narrow or touch). The
+ * still is painted for it from the prerender on, so a phone's first paint already
+ * has its console and the image can be preloaded — desktop keeps today's empty stage
+ * until the scene lights.
+ */
+const LOW_TIER_MEDIA = '(max-width: 1023.98px), (pointer: coarse)';
+const STILL = '/stills/console.webp';
+
 export function Experience() {
+  // on a phone the still is the largest thing on the first screen, so fetch it with the HTML
+  preload(STILL, { as: 'image', fetchPriority: 'high', media: LOW_TIER_MEDIA });
+
   const [quality, setQuality] = useState<Quality | null>(null);
   const status = useSignal(sceneStatus, 'pending');
   const chapter = useSignal(activeChapter, 0);
@@ -80,25 +93,25 @@ export function Experience() {
         {/*
           No scene at all (reduced motion, no WebGL, save-data): the opening chapter
           still shows its console, as a still rendered by the same Blender build.
+          Phones also show it while the scene is pending, and it fades out with this
+          layer as the canvas fades in on the first frame. On desktop the pending stage
+          stays as it was (glow and grid only): `stage-still-low` hides it there.
         */}
-        {status === 'off' ? (
-          <div
-            className={`absolute left-1/2 top-[26%] w-[52vw] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-700 lg:left-auto lg:right-[10%] lg:top-1/2 lg:w-[min(28vw,30rem)] lg:translate-x-0 ${
-              chapter === 0 ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {/* the same glow the scene gives the console, painted: a pool behind it and a halo on its edge */}
-            <div className="stage-still-glow absolute inset-[-12%]" />
-            <img
-              src="/stills/console.webp"
-              alt=""
-              width={1000}
-              height={1250}
-              decoding="async"
-              className="relative w-full [filter:drop-shadow(0_0_18px_rgb(var(--ch-accent)/0.35))_drop-shadow(0_0_60px_rgb(var(--ch-lamp)/0.25))]"
-            />
-          </div>
-        ) : null}
+        <div
+          className={`${status === 'off' ? '' : 'stage-still-low '}absolute left-1/2 top-[26%] w-[52vw] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-700 lg:left-auto lg:right-[10%] lg:top-1/2 lg:w-[min(28vw,30rem)] lg:translate-x-0 ${
+            chapter === 0 ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          {/* the same glow the scene gives the console, painted: a pool behind it and a halo on its edge */}
+          <div className="stage-still-glow absolute inset-[-12%]" />
+          <img
+            src={STILL}
+            alt=""
+            width={1000}
+            height={1250}
+            className="relative w-full [filter:drop-shadow(0_0_18px_rgb(var(--ch-accent)/0.35))_drop-shadow(0_0_60px_rgb(var(--ch-lamp)/0.25))]"
+          />
+        </div>
       </div>
       <div data-stage-layer className="absolute inset-0">
         {quality ? <ExperienceCanvas quality={quality} /> : null}

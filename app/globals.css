@@ -217,6 +217,14 @@
     background: radial-gradient(50% 45% at 55% 42%, rgb(var(--ch-accent) / 0.22) 0%, rgb(var(--ch-lamp) / 0.08) 45%, transparent 72%);
   }
 
+  /* the console still is for the low tier (and for no scene at all): desktop keeps its
+     plain stage while the scene starts. The negation of LOW_TIER_MEDIA in experience.tsx */
+  @media (min-width: 64rem) and (not (pointer: coarse)) {
+    .stage-still-low {
+      display: none;
+    }
+  }
+
   .stage-grid {
     background-image:
       linear-gradient(rgb(var(--ch-accent) / 0.2) 1px, transparent 1px),
