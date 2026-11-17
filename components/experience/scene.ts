@@ -18,7 +18,7 @@ import {
   TUNNEL_Z_MIN,
   type Quality,
 } from './formations';
-import { createModels } from './models';
+import { createModels, type Warm } from './models';
 import { createFinishPass, LensPass } from './post';
 
 /**
@@ -415,9 +415,54 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
   underLight.position.set(2, -4, 4);
   scene.add(keyLight, rimLight, underLight);
 
+  // --- shader warm-up --------------------------------------------------------
+  // Everything is drawn into the composer's float target, never straight to the screen,
+  // and three picks a different shader variant for a render target (no tone mapping,
+  // linear output). Compiling with no target set warmed the wrong variants, so the real
+  // ones still compiled inside the first frame each object was drawn in.
+  let warmTarget: THREE.WebGLRenderTarget | null = null;
+  const programReady = (material: THREE.Material) => {
+    // guarded: the missing program here is what broke three's compileAsync (see below)
+    const program = (renderer.properties.get(material) as { currentProgram?: { isReady?: () => boolean } })
+      .currentProgram;
+    return !program?.isReady || program.isReady();
+  };
+  const warm: Warm = (objects, done) => {
+    const materials = new Set<THREE.Material>();
+    const previous = renderer.getRenderTarget();
+    renderer.setRenderTarget(warmTarget);
+    try {
+      for (const object of objects) renderer.compile(object, camera, scene).forEach((m) => materials.add(m));
+    } catch {
+      // a driver that cannot precompile still renders; it just stutters once
+    } finally {
+      renderer.setRenderTarget(previous);
+    }
+    // With KHR_parallel_shader_compile the GPU links in the background and isReady says
+    // when; without it isReady is true at once and linking happens on first draw, as before.
+    const until = performance.now() + 1500;
+    const check = () => {
+      if (disposed) return;
+      let linked = true;
+      try {
+        for (const material of materials) {
+          if (!programReady(material)) {
+            linked = false;
+            break;
+          }
+        }
+      } catch {
+        linked = true;
+      }
+      if (linked || performance.now() > until) done();
+      else window.setTimeout(check, 16);
+    };
+    check();
+  };
+
   const kit = createModels(
     { accent: palette.accent, lamp: palette.lamp, paper: palette.paper },
-    { rates: hourly, quality },
+    { rates: hourly, quality, warm },
   );
   kit.models.forEach((model) => model && scene.add(model.root));
 
@@ -469,6 +514,7 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
   }
   composer.addPass(new OutputPass());
   composer.addPass(finish);
+  warmTarget = composer.readBuffer;
 
   // --- layout ---------------------------------------------------------------
   let baseFov = 35;
@@ -721,9 +767,10 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
    * pending for good. The loop below would then never start and the scene
    * would sit frozen on exactly those devices.
    *
-   * compile() is the synchronous half of the same call and does the same GL
-   * work; only the wait for linking to finish is lost. The deadline behind it
-   * starts the loop even if compiling itself throws.
+   * `warm` above is that call rebuilt safely: compile() (the synchronous half),
+   * then a poll that treats a missing program as ready and cannot throw out of
+   * its timer. It compiles for the composer's target, the variant actually drawn.
+   * The deadline behind it starts the loop whatever happens.
    */
   let started = false;
   const begin = () => {
@@ -733,12 +780,7 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     onVisibility();
   };
   const warmDeadline = window.setTimeout(begin, 1200);
-  try {
-    renderer.compile(scene, camera);
-  } catch {
-    // a driver that cannot precompile still renders; it just stutters once
-  }
-  begin();
+  warm([scene], begin);
 
   return () => {
     stop();

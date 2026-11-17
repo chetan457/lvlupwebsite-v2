@@ -54,6 +54,15 @@ type DustShared = {
   clouds: THREE.Points[];
 };
 
+/**
+ * Compiles these objects' shaders now, for the render target they will really be drawn
+ * into, and calls `done` once the GPU reports them linked (or straight away where it
+ * cannot tell). Supplied by the scene, which owns the renderer.
+ */
+export type Warm = (objects: THREE.Object3D[], done: () => void) => void;
+
+type Shared = { disposed: boolean; warm: Warm };
+
 export type HeroModel = {
   /** Positioned, scaled and spun by the scene exactly like its voxel formation. */
   root: THREE.Group;
@@ -507,7 +516,7 @@ type Ctx = {
   transition: Transition;
   dust: DustShared;
   redraws: (() => void)[];
-  state: { disposed: boolean };
+  state: Shared;
   mat: <T extends THREE.Material>(material: T) => T;
   add: (
     parent: THREE.Object3D,
@@ -523,7 +532,7 @@ function context(
   palette: Palette,
   surface: Surface,
   redraws: (() => void)[],
-  state: { disposed: boolean },
+  state: Shared,
   dust: DustShared,
 ): Ctx {
   const transition: Transition = {
@@ -646,8 +655,14 @@ function load(ctx: Ctx, name: string, onLoad: (scene: THREE.Group) => void) {
       if (parent) {
         const sample = () => {
           if (ctx.state.disposed) return;
+          const before = new Set(parent.children);
           addHalos(ctx, parent);
           addDust(ctx, parent);
+          // the new speck clouds stay hidden until their shaders are linked, so they never
+          // stall the frame they first appear in
+          const added = parent.children.filter((child) => !before.has(child));
+          added.forEach((child) => (child.visible = false));
+          ctx.state.warm(added, () => added.forEach((child) => (child.visible = true)));
         };
         if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(sample, { timeout: 800 });
         else window.setTimeout(sample, 0);
@@ -667,7 +682,16 @@ function deferLoad(model: HeroModel, ctx: Ctx, name: string, onLoad: (scene: THR
   model.request = () => {
     if (requested) return;
     requested = true;
-    load(ctx, name, onLoad);
+    load(ctx, name, (scene) => {
+      onLoad(scene);
+      if (!model.ready) return;
+      // Hold the chapter on its voxels until the model's shaders are compiled and linked,
+      // instead of compiling them in the middle of the frame it first appears in.
+      model.ready = false;
+      ctx.state.warm([model.root], () => {
+        if (!ctx.state.disposed) model.ready = true;
+      });
+    });
   };
   // /models is served with max-age (next.config.mjs), so the loader's own fetch of the
   // same URL is answered from the cache
@@ -1189,9 +1213,9 @@ function disposeTree(root: THREE.Object3D) {
 }
 
 /** One model per formation index; the tunnel (2) stays pure voxels. */
-export function createModels(palette: Palette, options: { rates: number[]; quality: 'high' | 'low' }) {
+export function createModels(palette: Palette, options: { rates: number[]; quality: 'high' | 'low'; warm: Warm }) {
   const redraws: (() => void)[] = [];
-  const state = { disposed: false };
+  const state: Shared = { disposed: false, warm: options.warm };
   const surface = surfaceTextures();
   const dust: DustShared = {
     time: { value: 0 },
