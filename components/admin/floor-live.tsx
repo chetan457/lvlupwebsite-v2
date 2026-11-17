@@ -17,6 +17,13 @@ type Props = {
 const POLL_MS = 20_000;
 
 /**
+ * At most one refresh per this window. A busy minute at the counter is a burst
+ * of writes (start, stop, a correction) and each one re-renders the whole floor
+ * on the server; one refresh after the burst shows the same end state.
+ */
+const REFRESH_GAP_MS = 2_000;
+
+/**
  * The live layer around the station grid.
  *
  * Two jobs, both of them "one of a thing instead of N":
@@ -29,6 +36,9 @@ const POLL_MS = 20_000;
  *    phone, the tablet at the counter — refreshes this tree, so two staff never
  *    disagree about what is running. Where the browser client is not
  *    configured, it falls back to polling rather than going silently stale.
+ *
+ * Refreshes are throttled to one per REFRESH_GAP_MS, the poll pauses while the
+ * tab is hidden, and the floor refreshes the moment it becomes visible again.
  */
 export function FloorLive({ stations, serverNow }: Props) {
   const router = useRouter();
@@ -44,35 +54,63 @@ export function FloorLive({ stations, serverNow }: Props) {
   useEffect(() => {
     const supabase = supabaseBrowser();
 
-    if (!supabase) {
-      const id = window.setInterval(() => router.refresh(), POLL_MS);
-      return () => window.clearInterval(id);
-    }
+    // --- refresh, throttled: the first change refreshes at once, a burst after it
+    // collapses into one trailing refresh REFRESH_GAP_MS later
+    let lastRefresh = 0;
+    let pendingRefresh = 0;
+    const refreshNow = () => {
+      if (pendingRefresh) window.clearTimeout(pendingRefresh);
+      pendingRefresh = 0;
+      lastRefresh = Date.now();
+      router.refresh();
+    };
+    const requestRefresh = () => {
+      // a hidden tab skips it: becoming visible refreshes anyway
+      if (document.hidden || pendingRefresh) return;
+      const wait = Math.max(0, lastRefresh + REFRESH_GAP_MS - Date.now());
+      pendingRefresh = window.setTimeout(refreshNow, wait);
+    };
+
+    // --- fallback poll, only while realtime is not live and the screen is on.
+    // A phone in a pocket polling every 20 s is server load nobody is reading.
+    let needPoll = !supabase;
+    let poll = 0;
+    const syncPolling = () => {
+      const want = needPoll && !document.hidden;
+      if (want && !poll) poll = window.setInterval(requestRefresh, POLL_MS);
+      if (!want && poll) {
+        window.clearInterval(poll);
+        poll = 0;
+      }
+    };
+
+    // a phone coming back from sleep may have missed changes (and its websocket
+    // may have been dropped meanwhile): catch up at once rather than on the next tick
+    const onVisibility = () => {
+      if (!document.hidden) refreshNow();
+      syncPolling();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    syncPolling();
 
     // A websocket can die quietly — shop wifi, a captive portal, a project with
     // realtime switched off — and a floor that has stopped hearing about the other
     // phones looks exactly like a quiet evening. Watch the status and fall back to
     // polling the moment the channel is not actually live.
-    let poll = 0;
-    const startPolling = () => {
-      if (!poll) poll = window.setInterval(() => router.refresh(), POLL_MS);
-    };
-    const stopPolling = () => {
-      if (poll) window.clearInterval(poll);
-      poll = 0;
-    };
-
     const channel = supabase
-      .channel('floor')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'play_sessions' }, () => router.refresh())
+      ?.channel('floor')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'play_sessions' }, requestRefresh)
       .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') stopPolling();
-        else startPolling();
+        needPoll = status !== 'SUBSCRIBED';
+        syncPolling();
       });
 
     return () => {
-      stopPolling();
-      void supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onVisibility);
+      needPoll = false;
+      syncPolling();
+      if (pendingRefresh) window.clearTimeout(pendingRefresh);
+      if (supabase && channel) void supabase.removeChannel(channel);
     };
   }, [router]);
 
