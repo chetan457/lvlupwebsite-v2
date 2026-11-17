@@ -423,9 +423,11 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
 
   // --- post -----------------------------------------------------------------
   // scene + depth of field → bloom → tone map to display colour → lens finish
-  // Phones get the same glow and lens finish as desktop. Only depth of field — the one
-  // full-resolution, multi-tap pass — stays desktop-only. A phone that cannot keep up
-  // is stepped down by the frame-rate check in the loop, not assumed weak up front.
+  // Phones (the low tier) get the lens finish but neither depth of field nor bloom: bloom
+  // was close to half of every phone frame in profiling and its shaders a large share of
+  // the first one. It is never added later mid-scroll either, because compiling its
+  // shaders then is exactly the stutter the warm-up below exists to avoid. The halo
+  // sprites in models.ts still give phones their glow.
   //
   // Float render targets hold the "brighter than white" values bloom keys off. Nearly every
   // WebGL2 device has them; one that does not skips bloom and depth of field rather than
@@ -434,7 +436,10 @@ export function createScene(host: HTMLElement, quality: Quality, onFirstFrame: (
     renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
   if (!floatTargets) console.info('[lvlup] no float render targets: bloom off, halos only');
   // ?debug&bloom=off shows exactly what a device without bloom sees
-  const bloomAllowed = floatTargets && !(debug && new URLSearchParams(window.location.search).get('bloom') === 'off');
+  const bloomAllowed =
+    quality === 'high' &&
+    floatTargets &&
+    !(debug && new URLSearchParams(window.location.search).get('bloom') === 'off');
 
   let composer: EffectComposer | null = new EffectComposer(
     renderer,
