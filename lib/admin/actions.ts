@@ -31,6 +31,10 @@ function explain(message: string): string {
   if (/has not happened yet/i.test(message)) return 'That day has not happened yet.';
   if (/nothing was played/i.test(message)) return 'Nothing was played on that day, so there is nothing to close.';
   if (/station not available/i.test(message)) return 'That station is retired.';
+  if (/already billed/i.test(message)) return 'That session is already stopped. Fix it on the day sheet.';
+  if (/delete a session this old/i.test(message))
+    return 'This session has been running over ten minutes — a manager or owner has to delete it.';
+  if (/session not found/i.test(message)) return 'That session is gone. Refresh the floor.';
   if (/phone number does not look right/i.test(message)) return 'Check the phone number, or leave it blank.';
   if (/amount looks wrong/i.test(message)) return 'That amount looks wrong. Check it and try again.';
   if (/bill cannot be negative/i.test(message)) return 'A bill cannot be negative.';
@@ -91,6 +95,52 @@ export async function stopSession(
     p_session: sessionId,
     p_payment: payment,
     p_amount: amount,
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/day');
+  return { error: error ? explain(error.message) : null };
+}
+
+/**
+ * Someone joined, or left, mid-session.
+ *
+ * The stretch at the old head count is closed and priced where it stands; the
+ * new one starts at the new rate. Nothing already played is re-rated, so a
+ * group that goes 1 → 2 → 4 pays each stretch at its own price.
+ */
+export async function setSessionPlayers(sessionId: string, players: number): Promise<Result> {
+  const { error: denied } = await guard();
+  if (denied) return { error: denied };
+
+  const heads = Math.trunc(players);
+  if (!Number.isFinite(heads) || heads < 1 || heads > 50) return { error: 'Players must be between 1 and 50.' };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc('set_session_players', { p_session: sessionId, p_players: heads });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/day');
+  return { error: error ? explain(error.message) : null };
+}
+
+/**
+ * Started by mistake — wrong bay, wrong card, a double tap.
+ *
+ * The row is deleted rather than billed at ₹0, so the day sheet is not left
+ * with a session nobody played; the audit log keeps the station, the guest, how
+ * long the clock had been running and the reason. The SQL refuses a session
+ * that has already been billed, a closed day, and anything over ten minutes old
+ * unless a manager or owner is asking.
+ */
+export async function cancelSession(sessionId: string, reason = ''): Promise<Result> {
+  const { error: denied } = await guard();
+  if (denied) return { error: denied };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc('cancel_session', {
+    p_session: sessionId,
+    p_reason: reason.trim().slice(0, 140) || null,
   });
 
   revalidatePath('/admin');

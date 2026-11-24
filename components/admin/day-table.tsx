@@ -2,12 +2,25 @@ import type { ReactNode } from 'react';
 
 import { clockTime, rupees, settlement } from '@/lib/admin/billing';
 import type { DaySession } from '@/lib/admin/queries';
+import type { SessionSegment } from '@/lib/admin/types';
 
 /**
  * Every session on one day, newest first. No client JS: the numbers are already
  * settled by the time they get here, and a running row says so rather than
  * ticking — the floor screen is where a live timer belongs.
  */
+
+/**
+ * How a bill was made up, when the group changed size while they played:
+ * `1p 10m ₹25 + 2p 5m ₹21 + 4p 42m ₹315`. One segment means one price, which
+ * the Amount column already says, so that case prints nothing.
+ */
+function groupLine(segments: SessionSegment[]): string | null {
+  if (segments.length < 2) return null;
+  return segments
+    .map((segment) => `${segment.players}p ${segment.billed_minutes ?? 0}m ${rupees(segment.amount)}`)
+    .join(' + ');
+}
 
 const PAYMENT_LABEL: Record<string, string> = {
   cash: 'Cash',
@@ -44,6 +57,9 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                     {row.guest_name || 'Walk-in'}
                     {row.guest_phone ? (
                       <span className="block font-mono text-[0.72rem] text-dimmer">{row.guest_phone}</span>
+                    ) : null}
+                    {groupLine(row.segments) ? (
+                      <span className="block font-mono text-[0.68rem] text-dimmer">{groupLine(row.segments)}</span>
                     ) : null}
                   </span>
                   <span className="text-right font-mono text-[0.75rem] text-dimmer">
@@ -104,6 +120,10 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                     {/* the number sits under the name rather than taking a column a phone cannot spare */}
                     {row.guest_phone ? (
                       <span className="block font-mono text-[0.72rem] text-dimmer">{row.guest_phone}</span>
+                    ) : null}
+                    {/* and the same for a bill made of more than one head count */}
+                    {groupLine(row.segments) ? (
+                      <span className="block font-mono text-[0.68rem] text-dimmer">{groupLine(row.segments)}</span>
                     ) : null}
                   </Td>
                   <Td align="right" className="font-mono text-dim tabular-nums">

@@ -6,7 +6,17 @@ import { supabaseConfigured, supabaseServer } from '@/lib/supabase/server';
 
 import { businessDay } from './billing';
 import { devTiming, logTiming, since } from './timing';
-import type { DayClosure, DayTotals, FloorStation, PlaySession, RateTier, Staff, StationKind } from './types';
+import type {
+  DayClosure,
+  DayTotals,
+  FloorStation,
+  OpenSession,
+  PlaySession,
+  RateTier,
+  SessionSegment,
+  Staff,
+  StationKind,
+} from './types';
 
 /**
  * A failed read is raised, not swallowed.
@@ -24,7 +34,30 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
 }
 
 /** A closed session with the station it was played on, for the day sheet. */
-export type DaySession = PlaySession & { station_name: string };
+export type DaySession = PlaySession & { station_name: string; segments: SessionSegment[] };
+
+/** Oldest first, so a bill reads in the order the group changed size. */
+function inOrder(segments: SessionSegment[] | null): SessionSegment[] {
+  return [...(segments ?? [])].sort((a, b) => a.started_at.localeCompare(b.started_at));
+}
+
+/**
+ * The running total so far, split into what is already settled and what is
+ * still ticking. A session started before segments existed has none, in which
+ * case the whole session is its own stretch.
+ */
+function withSegments(session: PlaySession, segments: SessionSegment[] | null): OpenSession {
+  const ordered = inOrder(segments);
+  const open = ordered.find((segment) => segment.ended_at === null);
+  const prior = ordered.reduce((sum, segment) => sum + (segment.ended_at ? segment.amount ?? 0 : 0), 0);
+  return {
+    ...session,
+    segments: ordered,
+    prior_amount: prior,
+    segment_started_at: open?.started_at ?? session.started_at,
+    segment_rate: open?.rate_per_hour ?? session.rate_snapshot,
+  };
+}
 
 /*
  * Who-is-signed-in lookups are wrapped in React `cache()`: memoised for one
@@ -146,12 +179,22 @@ export async function getFloor(): Promise<FloorStation[]> {
       // refreshes, and a card must never move under a thumb on its way down
       .order('sort', { ascending: true })
       .order('name', { ascending: true }),
-    supabase.from('play_sessions').select('*').is('ended_at', null),
+    supabase
+      .from('play_sessions')
+      .select('*, session_segments(players, rate_per_hour, started_at, ended_at, billed_minutes, amount)')
+      .is('ended_at', null),
   ]);
 
   const stations = unwrap(stationRows, 'the floor');
   const open = unwrap(openRows, 'the sessions in play');
-  const live = new Map((open ?? []).map((row) => [row.station_id as string, row as PlaySession]));
+  const live = new Map(
+    (open ?? []).map((row) => {
+      const { session_segments: segments, ...session } = row as typeof row & {
+        session_segments: SessionSegment[] | null;
+      };
+      return [session.station_id as string, withSegments(session as PlaySession, segments)];
+    }),
+  );
 
   return (stations ?? []).map((row) => {
     const { station_kinds: kind, station_rates: rates, ...station } = row as typeof row & {
@@ -198,13 +241,21 @@ export async function getDaySessions(day: string = businessDay()): Promise<DaySe
   const supabase = await supabaseServer();
   const result = await supabase
     .from('play_sessions')
-    .select('*, stations(name)')
+    .select('*, stations(name), session_segments(players, rate_per_hour, started_at, ended_at, billed_minutes, amount)')
     .eq('day', day)
     .order('started_at', { ascending: false });
 
   return (unwrap(result, 'the day sheet') ?? []).map((row) => {
-    const { stations: station, ...session } = row as typeof row & { stations: { name: string } | null };
-    return { ...(session as PlaySession), station_name: station?.name ?? '—' };
+    const { stations: station, session_segments: segments, ...session } = row as typeof row & {
+      stations: { name: string } | null;
+      session_segments: SessionSegment[] | null;
+    };
+    return {
+      ...(session as PlaySession),
+      station_name: station?.name ?? '—',
+      // only shown when there is more than one: a bill the group changed size during
+      segments: inOrder(segments),
+    };
   });
 }
 

@@ -48,17 +48,49 @@ export type PlaySession = {
   day: string;
 };
 
+/**
+ * A stretch of one session at one head count.
+ *
+ * A group that grows mid-session is three prices in one bill, so the session
+ * row carries the shape and the segments carry the money: each one keeps the
+ * rate it was charged at and is billed on its own. Mirrors
+ * supabase/migrations/0006_segments_and_cancel.sql.
+ */
+export type SessionSegment = {
+  players: number;
+  rate_per_hour: number;
+  started_at: string;
+  /** Null on the stretch that is still running. */
+  ended_at: string | null;
+  billed_minutes: number | null;
+  amount: number | null;
+};
+
 /** What an hour costs at a given head count. The highest tier at or below the count wins. */
 export type RateTier = {
   players: number;
   rate_per_hour: number;
 };
 
+/**
+ * A running session with the arithmetic the floor card needs: everything the
+ * earlier head counts already cost, and where the current one started. The card
+ * adds the running stretch to `prior_amount` rather than re-rating the lot.
+ */
+export type OpenSession = PlaySession & {
+  segments: SessionSegment[];
+  /** Settled total of the stretches closed by a head-count change. */
+  prior_amount: number;
+  /** When the current head count started, and what it costs per hour. */
+  segment_started_at: string;
+  segment_rate: number;
+};
+
 /** A station with its kind, its rate card and whatever is playing on it right now. */
 export type FloorStation = Station & {
   kind_label: string;
   rates: RateTier[];
-  open_session: PlaySession | null;
+  open_session: OpenSession | null;
 };
 
 export type DayTotals = {
