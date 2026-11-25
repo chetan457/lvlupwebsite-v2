@@ -48,14 +48,18 @@ function inOrder(segments: SessionSegment[] | null): SessionSegment[] {
  */
 function withSegments(session: PlaySession, segments: SessionSegment[] | null): OpenSession {
   const ordered = inOrder(segments);
-  const open = ordered.find((segment) => segment.ended_at === null);
+  const open = ordered.find((segment) => segment.ended_at === null) ?? null;
   const prior = ordered.reduce((sum, segment) => sum + (segment.ended_at ? segment.amount ?? 0 : 0), 0);
+  // every stretch closed and the session still open is what a pause looks like;
+  // no stretches at all is a session from before segments existed, which is running
+  const paused = ordered.length > 0 && !open;
   return {
     ...session,
     segments: ordered,
     prior_amount: prior,
-    segment_started_at: open?.started_at ?? session.started_at,
+    segment_started_at: open ? open.started_at : ordered.length ? null : session.started_at,
     segment_rate: open?.rate_per_hour ?? session.rate_snapshot,
+    paused,
   };
 }
 

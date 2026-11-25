@@ -125,6 +125,39 @@ export async function setSessionPlayers(sessionId: string, players: number): Pro
 }
 
 /**
+ * Stop the clock without ending the session: a power cut, dead controllers, a
+ * group that has gone for food and left their things on the seat. The bay stays
+ * theirs and the bill stops moving. Resuming opens a fresh stretch at whatever
+ * the head count costs then.
+ *
+ * Pausing closes a stretch, and every stretch rounds its last minute up, so
+ * pausing twice inside a minute is not free.
+ */
+export async function pauseSession(sessionId: string): Promise<Result> {
+  const { error: denied } = await guard();
+  if (denied) return { error: denied };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc('pause_session', { p_session: sessionId });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/day');
+  return { error: error ? explain(error.message) : null };
+}
+
+export async function resumeSession(sessionId: string): Promise<Result> {
+  const { error: denied } = await guard();
+  if (denied) return { error: denied };
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc('resume_session', { p_session: sessionId });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/day');
+  return { error: error ? explain(error.message) : null };
+}
+
+/**
  * Started by mistake — wrong bay, wrong card, a double tap.
  *
  * The row is deleted rather than billed at ₹0, so the day sheet is not left

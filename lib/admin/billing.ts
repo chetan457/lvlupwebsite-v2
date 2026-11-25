@@ -79,12 +79,37 @@ export function rupees(amount: number | null | undefined): string {
 
 /** Elapsed time as h:mm:ss, for a timer that is counting up. */
 export function elapsed(startedAt: string, now: number = Date.now()): string {
-  const total = Math.max(0, Math.floor((now - Date.parse(startedAt)) / 1000));
+  return formatElapsed(Math.max(0, (now - Date.parse(startedAt)) / 1000));
+}
+
+export function formatElapsed(totalSeconds: number): string {
+  const total = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const pad = (v: number) => String(v).padStart(2, '0');
   return (h > 0 ? `${h}:` : '') + `${pad(m)}:${pad(s)}`;
+}
+
+/**
+ * How long the clock has actually run, in seconds: the sum of the stretches,
+ * not the wall clock since the session started. A session that was paused for
+ * twenty minutes is twenty minutes shorter than the time on the wall, and the
+ * timer on the card has to agree with the bill.
+ *
+ * A session from before segments existed has none, so it falls back to the
+ * whole stretch since it started.
+ */
+export function playedSeconds(
+  segments: { started_at: string; ended_at: string | null }[],
+  startedAt: string,
+  now: number = Date.now(),
+): number {
+  if (!segments.length) return Math.max(0, (now - Date.parse(startedAt)) / 1000);
+  return segments.reduce((total, segment) => {
+    const until = segment.ended_at ? Date.parse(segment.ended_at) : now;
+    return total + Math.max(0, (until - Date.parse(segment.started_at)) / 1000);
+  }, 0);
 }
 
 const TIME = new Intl.DateTimeFormat('en-IN', {

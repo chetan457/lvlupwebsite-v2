@@ -22,6 +22,11 @@ function groupLine(segments: SessionSegment[]): string | null {
     .join(' + ');
 }
 
+/** An open session with no open stretch is a paused one: the bay is taken, the clock is not running. */
+function isPaused(row: DaySession): boolean {
+  return !row.ended_at && row.segments.length > 0 && row.segments.every((segment) => segment.ended_at !== null);
+}
+
 const PAYMENT_LABEL: Record<string, string> = {
   cash: 'Cash',
   upi: 'UPI',
@@ -49,7 +54,15 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="font-mono text-paper">{row.station_name}</span>
                   <span className="font-mono text-[1.05rem] tabular-nums text-paper">
-                    {live ? <span className="text-live">In play</span> : rupees(row.amount)}
+                    {live ? (
+                      isPaused(row) ? (
+                        <span className="text-accent">Paused</span>
+                      ) : (
+                        <span className="text-live">In play</span>
+                      )
+                    ) : (
+                      rupees(row.amount)
+                    )}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3 text-[0.85rem] text-dim">
@@ -132,6 +145,8 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                   <Td align="right" className="font-mono tabular-nums">
                     {endedAt ? (
                       <span className="text-dim">{clockTime(endedAt)}</span>
+                    ) : isPaused(row) ? (
+                      <span className="text-accent">Paused</span>
                     ) : (
                       <span className="text-live">In play</span>
                     )}
@@ -144,7 +159,11 @@ export function DayTable({ sessions, total }: { sessions: DaySession[]; total: n
                   </Td>
                   <Td align="right" className="font-mono text-paper tabular-nums">
                     {live ? (
-                      <span className="text-live">In play</span>
+                      isPaused(row) ? (
+                        <span className="text-accent">Paused</span>
+                      ) : (
+                        <span className="text-live">In play</span>
+                      )
                     ) : (
                       <>
                         {rupees(row.amount)}

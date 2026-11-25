@@ -32,7 +32,7 @@ const REFRESH_GAP_MS = 2_000;
  *    timer and they all show the same second. It keeps ticking under
  *    prefers-reduced-motion — a clock is information, not decoration, and a
  *    frozen one would be a lie about what the guest owes.
- * 2. One realtime channel. Any write to play_sessions anywhere — the other
+ * 2. One realtime channel. Any write to play_sessions or its segments — the other
  *    phone, the tablet at the counter — refreshes this tree, so two staff never
  *    disagree about what is running. Where the browser client is not
  *    configured, it falls back to polling rather than going silently stale.
@@ -104,6 +104,9 @@ export function FloorLive({ stations, serverNow }: Props) {
     const channel = supabase
       ?.channel('floor')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'play_sessions' }, requestRefresh)
+      // a pause changes no row in play_sessions, only the segment under it, so the
+      // other phone would keep showing a running timer without this second listener
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_segments' }, requestRefresh)
       .subscribe((status: string) => {
         if (disposed) return;
         needPoll = status !== 'SUBSCRIBED';

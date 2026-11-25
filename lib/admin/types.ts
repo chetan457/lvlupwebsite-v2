@@ -79,11 +79,14 @@ export type RateTier = {
  */
 export type OpenSession = PlaySession & {
   segments: SessionSegment[];
-  /** Settled total of the stretches closed by a head-count change. */
+  /** Settled total of the stretches already closed — by a head-count change, or by a pause. */
   prior_amount: number;
-  /** When the current head count started, and what it costs per hour. */
-  segment_started_at: string;
+  /** When the stretch now running started. Null while the session is paused: nothing is accruing. */
+  segment_started_at: string | null;
+  /** What the current head count costs per hour — the price that resumes after a pause. */
   segment_rate: number;
+  /** Open session, stopped clock: the bay is still theirs, the bill is not moving. */
+  paused: boolean;
 };
 
 /** A station with its kind, its rate card and whatever is playing on it right now. */

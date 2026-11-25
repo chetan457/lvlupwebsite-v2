@@ -2,11 +2,19 @@
 
 import { useState, useTransition } from 'react';
 
-import { cancelSession, setSessionPlayers, startSession, stopSession } from '@/lib/admin/actions';
+import {
+  cancelSession,
+  pauseSession,
+  resumeSession,
+  setSessionPlayers,
+  startSession,
+  stopSession,
+} from '@/lib/admin/actions';
 import {
   billedMinutes,
   clockTime,
-  elapsed,
+  formatElapsed,
+  playedSeconds,
   rateFor,
   rupees,
   runningAmount,
@@ -40,8 +48,10 @@ export function StationCard({ station, now }: Props) {
    * time it played at the old size.
    */
   const quoted = session
-    ? session.prior_amount + runningAmount(session.segment_rate, session.segment_started_at, now)
+    ? session.prior_amount +
+      (session.segment_started_at ? runningAmount(session.segment_rate, session.segment_started_at, now) : 0)
     : 0;
+  const paused = Boolean(session?.paused);
   const [pending, run] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [billing, setBilling] = useState(false);
@@ -67,6 +77,15 @@ export function StationCard({ station, now }: Props) {
       const result = await setSessionPlayers(session.id, heads);
       setError(result.error);
       if (!result.error) setDraft(null);
+    });
+  };
+
+  const onPause = () => {
+    if (!session) return;
+    setError(null);
+    run(async () => {
+      const result = await (paused ? resumeSession(session.id) : pauseSession(session.id));
+      setError(result.error);
     });
   };
 
@@ -117,7 +136,9 @@ export function StationCard({ station, now }: Props) {
 
   return (
     <article
-      className={`border border-edge border-l-4 bg-surface ${session ? 'border-l-live' : 'border-l-edge-hi'}`}
+      className={`border border-edge border-l-4 bg-surface ${
+        session ? (paused ? 'border-l-accent' : 'border-l-live') : 'border-l-edge-hi'
+      }`}
     >
       <header className="flex items-baseline justify-between gap-3 border-b border-edge px-3 py-2">
         <h2 className="font-display text-[1.05rem] font-semibold uppercase leading-none tracking-[0.02em]">
@@ -137,16 +158,28 @@ export function StationCard({ station, now }: Props) {
             <div className="flex items-end justify-between gap-3">
               <p
                 // tabular-nums so the seconds digit never shifts the minutes sideways
-                className="font-mono text-4xl leading-none tabular-nums text-live"
+                className={`font-mono text-4xl leading-none tabular-nums ${paused ? 'text-accent' : 'text-live'}`}
                 aria-label="Time in play"
               >
-                {elapsed(session.started_at, now)}
+                {/* the stretches added up, not the wall clock: a session paused for
+                    twenty minutes is twenty minutes cheaper, and the timer has to
+                    agree with the bill */}
+                {formatElapsed(playedSeconds(session.segments, session.started_at, now))}
               </p>
               <p className="font-mono text-xl leading-none tabular-nums text-paper">
                 {/* the snapshot, not the station: a rate change mid-session must not change the bill */}
                 {rupees(quoted)}
               </p>
             </div>
+
+            {paused ? (
+              <p
+                aria-live="polite"
+                className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-accent"
+              >
+                Paused · the clock is stopped
+              </p>
+            ) : null}
 
             <p className="text-[0.85rem] leading-snug text-dim">
               <span className="text-paper">{session.guest_name?.trim() || 'Walk-in'}</span>
@@ -204,7 +237,11 @@ export function StationCard({ station, now }: Props) {
                       onClick={onPlayers}
                       className="min-h-11 border border-accent/60 bg-accent/10 px-3 font-mono text-[0.72rem] uppercase tracking-[0.1em] text-paper transition-colors hover:bg-accent/20 disabled:opacity-50"
                     >
-                      {pending ? 'Changing…' : `Charge ${rupees(headsRate)}/hr from now`}
+                      {pending
+                        ? 'Changing…'
+                        : paused
+                          ? `Charge ${rupees(headsRate)}/hr on resume`
+                          : `Charge ${rupees(headsRate)}/hr from now`}
                     </button>
                     <button
                       type="button"
@@ -290,18 +327,35 @@ export function StationCard({ station, now }: Props) {
               </div>
             ) : (
               <>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    // prefilled with the quoted figure: most bills are taken as they stand
-                    setSettled(String(quoted));
-                    setBilling(true);
-                  }}
-                  className="min-h-11 w-full border border-edge-hi bg-surface-hi px-3 font-mono text-[0.8rem] uppercase tracking-[0.12em] text-paper transition-colors hover:border-live disabled:opacity-50"
-                >
-                  Stop &amp; bill
-                </button>
+                {/* Pause beside Stop, not under it: the two are different sizes of
+                    decision, and the one that ends the session keeps the wider half */}
+                <div className="grid grid-cols-[7rem_1fr] gap-2">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={onPause}
+                    aria-pressed={paused}
+                    className={`min-h-11 border px-3 font-mono text-[0.8rem] uppercase tracking-[0.12em] text-paper transition-colors disabled:opacity-50 ${
+                      paused
+                        ? 'border-accent/60 bg-accent/10 hover:bg-accent/20'
+                        : 'border-edge-hi bg-surface-hi hover:border-accent'
+                    }`}
+                  >
+                    {pending ? '…' : paused ? 'Resume' : 'Pause'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      // prefilled with the quoted figure: most bills are taken as they stand
+                      setSettled(String(quoted));
+                      setBilling(true);
+                    }}
+                    className="min-h-11 border border-edge-hi bg-surface-hi px-3 font-mono text-[0.8rem] uppercase tracking-[0.12em] text-paper transition-colors hover:border-live disabled:opacity-50"
+                  >
+                    Stop &amp; bill
+                  </button>
+                </div>
 
                 {/* Wrong bay, double tap, a group that walked out before they sat
                     down. Deleting beats billing ₹0: a session nobody played has no
@@ -427,7 +481,7 @@ export function StationCard({ station, now }: Props) {
   );
 }
 
-/** One stretch of a session, as it reads on the card: `2p 15m ₹63`. */
+/** One stretch of a session, as it reads on the card: `2p 15m ₹63`. A gap between two of them is a pause. */
 function segmentLine(segment: SessionSegment, now: number): string {
   const minutes = segment.ended_at
     ? segment.billed_minutes ?? 0
